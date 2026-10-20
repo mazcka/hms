@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useHousehold } from "@/components/auth-provider";
+import { PlaceField } from "@/components/place-field";
 import { Alert, Empty, PersonLink } from "@/components/ui";
 import { EVENT_KINDS } from "@/lib/labels";
 
@@ -13,11 +14,12 @@ type EventRow = {
   event_date: string;
   event_time: string | null;
   person_id: string | null;
+  place: string | null;
   notes: string | null;
   remind_day_before: boolean;
 };
 
-const blank = { title: "", kind: "birthday" as keyof typeof EVENT_KINDS, event_date: "", event_time: "", person_id: "", notes: "", remind_day_before: true };
+const blank = { title: "", kind: "birthday" as keyof typeof EVENT_KINDS, event_date: "", event_time: "", person_id: "", place: "", notes: "", remind_day_before: true };
 
 export default function EventsPage() {
   const gate = useHousehold();
@@ -31,7 +33,7 @@ export default function EventsPage() {
     if (!gate) return;
     const [p, e] = await Promise.all([
       gate.supabase.from("hms_people").select("id, name").eq("household_id", gate.member.household_id).order("name"),
-      gate.supabase.from("hms_events").select("id, title, kind, event_date, event_time, person_id, notes, remind_day_before").eq("household_id", gate.member.household_id).order("event_date"),
+      gate.supabase.from("hms_events").select("id, title, kind, event_date, event_time, person_id, place, notes, remind_day_before").eq("household_id", gate.member.household_id).order("event_date"),
     ]);
     if (p.error || e.error) setError(p.error?.message || e.error?.message || "");
     setPeople((p.data ?? []) as Person[]);
@@ -65,6 +67,7 @@ export default function EventsPage() {
       event_date: form.event_date,
       event_time: form.event_time || null,
       person_id: form.person_id || null,
+      place: form.place.trim() || null,
       notes: form.notes.trim() || null,
       remind_day_before: form.remind_day_before,
       created_by: gate.member.id,
@@ -131,6 +134,10 @@ export default function EventsPage() {
           </select>
         </label>
         <label>
+          מקום
+          <PlaceField value={form.place} onChange={(place) => setForm({ ...form, place })} />
+        </label>
+        <label>
           הערות
           <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
         </label>
@@ -153,6 +160,7 @@ export default function EventsPage() {
           <p className="meta">
             {EVENT_KINDS[row.kind]} · {row.event_date}
             {row.event_time ? ` ${row.event_time.slice(0, 5)}` : ""}
+            {row.place ? ` · ${row.place}` : ""}
           </p>
           {row.notes ? <p>{row.notes}</p> : null}
           <button className="btn btn-danger" type="button" onClick={() => remove(row.id)}>מחיקה</button>

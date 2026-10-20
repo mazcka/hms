@@ -27,6 +27,7 @@ export type VoiceDraft = {
   relation: Relation | "";
   className: string;
   weekday: string;
+  weekdays: number[];
   startsAt: string;
   endsAt: string;
   place: string;
@@ -64,6 +65,7 @@ export function emptyDraft(partial?: Partial<VoiceDraft>): VoiceDraft {
     relation: "",
     className: "",
     weekday: "",
+    weekdays: [],
     startsAt: "",
     endsAt: "",
     place: "",
@@ -88,6 +90,14 @@ function asKind(value: unknown): DraftKind | null {
 
 function str(value: unknown) {
   return typeof value === "string" ? value : "";
+}
+
+function parseWeekdays(row: Record<string, unknown>) {
+  const listed = Array.isArray(row.weekdays) ? row.weekdays : [];
+  const fromList = listed.map(Number).filter((day) => day >= 0 && day <= 6);
+  if (fromList.length) return [...new Set(fromList)].sort((a, b) => a - b);
+  const single = Number(str(row.weekday));
+  return Number.isInteger(single) && single >= 0 && single <= 6 ? [single] : [];
 }
 
 export function draftFromModel(
@@ -157,6 +167,7 @@ export function draftFromModel(
     relation,
     className: str(first.className),
     weekday: str(first.weekday),
+    weekdays: parseWeekdays(first),
     startsAt: str(first.startsAt),
     endsAt: str(first.endsAt),
     place: str(first.place),
@@ -188,7 +199,7 @@ export function missingFields(draft: VoiceDraft): string[] {
     if (!draft.personName.trim()) missing.push("שם הילדה או האדם");
     if (!draft.relation) missing.push("קשר");
     if (!draft.className.trim()) missing.push("שם החוג");
-    if (draft.weekday === "") missing.push("יום בשבוע");
+    if (!draft.weekdays.length && draft.weekday === "") missing.push("יום בשבוע");
     if (!draft.startsAt) missing.push("שעת התחלה");
     return missing;
   }

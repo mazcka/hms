@@ -77,6 +77,7 @@ create table public.hms_events (
   event_date date not null,
   event_time time,
   person_id uuid references public.hms_people (id) on delete set null,
+  place text,
   notes text,
   remind_day_before boolean not null default true,
   created_by uuid references public.hms_members (id) on delete set null,

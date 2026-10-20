@@ -2,7 +2,10 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useHousehold } from "@/components/auth-provider";
-import { EVENT_KINDS, WEEKDAYS } from "@/lib/labels";
+import { PlaceField } from "@/components/place-field";
+import { WeekdayPicker } from "@/components/weekday-picker";
+import { EVENT_KINDS } from "@/lib/labels";
+import { parseShoppingText } from "@/lib/shop-list";
 import { notifyRefresh, notifyTasksChanged } from "@/lib/task";
 
 type Kind = "task" | "shop" | "class" | "event";
@@ -22,7 +25,9 @@ export function QuickAdd() {
   const [kind, setKind] = useState<Kind | null>(null);
   const [title, setTitle] = useState("");
   const [extra, setExtra] = useState("");
-  const [weekday, setWeekday] = useState("0");
+  const [weekdays, setWeekdays] = useState<number[]>([0]);
+  const [endsAt, setEndsAt] = useState("");
+  const [place, setPlace] = useState("");
   const [personId, setPersonId] = useState("");
   const [listId, setListId] = useState("");
   const [eventKind, setEventKind] = useState<keyof typeof EVENT_KINDS>("other");
@@ -36,6 +41,8 @@ export function QuickAdd() {
     setKind(null);
     setTitle("");
     setExtra("");
+    setEndsAt("");
+    setPlace("");
     setError("");
     setPending(false);
   }
@@ -92,11 +99,7 @@ export function QuickAdd() {
       if (!message) notifyTasksChanged();
     }
     if (kind === "shop") {
-      const names = title
-        .split(/[\n,]+/)
-        .flatMap((line) => line.trim().split(/\s+/))
-        .map((name) => name.replace(/[-–]/g, " ").replace(/\s+/g, " ").trim())
-        .filter(Boolean);
+      const names = parseShoppingText(title);
       if (names.length === 0) message = "חסרים פריטים.";
       let target = listId;
       if (!message && !target) {
@@ -106,21 +109,31 @@ export function QuickAdd() {
       }
       if (!message && target) {
         const { error: writeError } = await current.supabase.from("hms_shop_items").insert(
-          names.map((name) => ({ household_id: hid, list_id: target, name })),
+          names.map((item) => ({
+            household_id: hid,
+            list_id: target,
+            name: item.name,
+            quantity: item.quantity,
+            unit: item.unit,
+          })),
         );
         message = writeError?.message ?? "";
       }
       if (!message) notifyRefresh();
     }
     if (kind === "class") {
-      if (!personId || !extra) message = "צריך אדם ושעת התחלה.";
+      if (!personId || !extra || weekdays.length === 0) message = "צריך אדם, יום ושעת התחלה.";
       else {
+        const days = [...weekdays].sort((a, b) => a - b);
         const { error: writeError } = await current.supabase.from("hms_classes").insert({
           household_id: hid,
           person_id: personId,
           name: title.trim(),
-          weekday: Number(weekday),
+          weekday: days[0],
+          weekdays: days,
           starts_at: extra,
+          ends_at: endsAt || null,
+          place: place.trim() || null,
         });
         message = writeError?.message ?? "";
       }
@@ -165,6 +178,8 @@ export function QuickAdd() {
                 setMenu(false);
                 setTitle("");
                 setExtra("");
+                setEndsAt("");
+                setPlace("");
                 setError("");
               }}
             >
@@ -198,7 +213,7 @@ export function QuickAdd() {
                 className="modal-note"
                 value={title}
                 aria-label="פריטים"
-                placeholder="חלב ביצים שוקו"
+                placeholder={"חלב\nביצים\n5 פיתות\n8 מלפפונים"}
                 onChange={(e) => setTitle(e.target.value)}
                 autoFocus
               />
@@ -227,17 +242,18 @@ export function QuickAdd() {
                     ))}
                   </select>
                 </label>
-                <label>
-                  יום
-                  <select value={weekday} onChange={(e) => setWeekday(e.target.value)}>
-                    {WEEKDAYS.map((day, index) => (
-                      <option key={day} value={index}>{day}</option>
-                    ))}
-                  </select>
-                </label>
+                <WeekdayPicker value={weekdays} onChange={setWeekdays} />
                 <label>
                   שעה
                   <input type="time" value={extra} onChange={(e) => setExtra(e.target.value)} required />
+                </label>
+                <label>
+                  סיום
+                  <input type="time" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
+                </label>
+                <label>
+                  מקום
+                  <PlaceField value={place} onChange={setPlace} />
                 </label>
               </div>
             ) : null}

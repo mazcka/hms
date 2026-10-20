@@ -2,8 +2,10 @@
 
 import { useRef, useState } from "react";
 import { useHousehold } from "@/components/auth-provider";
+import { PlaceField } from "@/components/place-field";
+import { WeekdayPicker } from "@/components/weekday-picker";
 import { Alert } from "@/components/ui";
-import { DRAFT_KINDS, EVENT_KINDS, RELATIONS, WEEKDAYS } from "@/lib/labels";
+import { DRAFT_KINDS, EVENT_KINDS, RELATIONS } from "@/lib/labels";
 import {
   emptyDraft,
   missingFields,
@@ -167,11 +169,13 @@ export default function VoicePage() {
         if (created.error) throw new Error(created.error.message);
         personId = (created.data as { id: string }).id;
       }
+      const days = current.weekdays.length ? [...current.weekdays].sort((a, b) => a - b) : [Number(current.weekday)];
       const createdClass = await gate.supabase.from("hms_classes").insert({
         household_id: hid,
         person_id: personId,
         name: current.className.trim(),
-        weekday: Number(current.weekday),
+        weekday: days[0],
+        weekdays: days,
         starts_at: current.startsAt,
         ends_at: current.endsAt || null,
         place: current.place.trim() || null,
@@ -193,6 +197,7 @@ export default function VoicePage() {
         event_date: current.eventDate,
         event_time: current.eventTime || null,
         person_id: personId,
+        place: current.place.trim() || null,
         notes: current.eventNotes.trim() || null,
         created_by: gate.member.id,
       }).select("id").single();
@@ -288,14 +293,9 @@ export default function VoicePage() {
                 </select>
               </label>
               <label>חוג<input value={draft.className} onChange={(e) => setDraft({ ...draft, className: e.target.value })} /></label>
-              <label>
-                יום
-                <select value={draft.weekday} onChange={(e) => setDraft({ ...draft, weekday: e.target.value })}>
-                  <option value="">בחירה</option>
-                  {WEEKDAYS.map((day, index) => <option key={day} value={index}>{day}</option>)}
-                </select>
-              </label>
+              <WeekdayPicker value={draft.weekdays} onChange={(weekdays) => setDraft({ ...draft, weekdays, weekday: weekdays.length ? String(weekdays[0]) : "" })} />
               <label>התחלה<input type="time" value={draft.startsAt} onChange={(e) => setDraft({ ...draft, startsAt: e.target.value })} /></label>
+              <label>מקום<PlaceField value={draft.place} onChange={(place) => setDraft({ ...draft, place })} /></label>
             </>
           ) : null}
           {draft.kind === "event" ? (
@@ -308,6 +308,7 @@ export default function VoicePage() {
                 </select>
               </label>
               <label>תאריך<input type="date" value={draft.eventDate} onChange={(e) => setDraft({ ...draft, eventDate: e.target.value })} /></label>
+              <label>מקום<PlaceField value={draft.place} onChange={(place) => setDraft({ ...draft, place })} /></label>
             </>
           ) : null}
           {draft.kind === "wish" ? (
