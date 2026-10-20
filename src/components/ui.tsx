@@ -1,4 +1,14 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
+
+export function PersonLink({ id, name }: { id: string; name: string }) {
+  if (!name) return null;
+  return (
+    <Link className="chip chip-person" href={`/people/${id}`}>
+      {name}
+    </Link>
+  );
+}
 
 export function Alert({ children }: { children: string }) {
   if (!children) return null;

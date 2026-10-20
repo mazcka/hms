@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useHousehold } from "@/components/auth-provider";
-import { Alert, Empty } from "@/components/ui";
+import { Alert, Empty, PersonLink } from "@/components/ui";
 import { RELATIONS, WEEKDAYS } from "@/lib/labels";
 
 type Person = { id: string; name: string; relation: keyof typeof RELATIONS };
@@ -39,6 +39,11 @@ export default function ClassesPage() {
 
   useEffect(() => {
     load();
+    function onRefresh() {
+      load();
+    }
+    window.addEventListener("hms-refresh", onRefresh);
+    return () => window.removeEventListener("hms-refresh", onRefresh);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gate]);
 
@@ -104,9 +109,10 @@ export default function ClassesPage() {
   return (
     <>
       <h1>חוגים</h1>
-      <p className="lede">לוח שבועי קבוע, לא אירוע חד-פעמי.</p>
       <Alert>{error}</Alert>
-      <form className="card stack" onSubmit={addPerson}>
+      <details className="add card">
+      <summary>אדם או חוג</summary>
+      <form className="stack" onSubmit={addPerson}>
         <h2>אדם בלי חשבון</h2>
         <label>
           שם
@@ -122,7 +128,7 @@ export default function ClassesPage() {
         </label>
         <button className="btn btn-quiet" type="submit">הוספת אדם</button>
       </form>
-      <form className="card stack" onSubmit={addClass}>
+      <form className="stack" onSubmit={addClass}>
         <h2>חוג</h2>
         <label>
           עבור
@@ -159,8 +165,9 @@ export default function ClassesPage() {
         </label>
         <button className="btn btn-primary" type="submit">שמירת חוג</button>
       </form>
+      </details>
       {!rows ? <p>טוען…</p> : null}
-      {rows && rows.length === 0 ? <Empty title="אין חוגים" hint="קודם מוסיפים אדם, אחר כך חוג." /> : null}
+      {rows && rows.length === 0 ? <Empty title="אין חוגים" /> : null}
       {WEEKDAYS.map((day, index) => {
         const dayRows = (rows ?? []).filter((row) => row.weekday === index);
         if (!dayRows.length) return null;
@@ -172,9 +179,10 @@ export default function ClassesPage() {
                 <li key={row.id} className="spread">
                   <span>
                     {row.starts_at.slice(0, 5)}
-                    {row.ends_at ? `–${row.ends_at.slice(0, 5)}` : ""} · {row.name} · {people.find((p) => p.id === row.person_id)?.name}
+                    {row.ends_at ? `–${row.ends_at.slice(0, 5)}` : ""} · {row.name}
                     {row.place ? ` · ${row.place}` : ""}
-                    {row.active ? "" : " · לא פעיל"}
+                    {row.active ? "" : " · מושהה"}{" "}
+                    <PersonLink id={row.person_id} name={people.find((p) => p.id === row.person_id)?.name ?? ""} />
                   </span>
                   <span className="row">
                     <button className="btn btn-quiet" type="button" onClick={() => toggle(row)}>{row.active ? "השהיה" : "הפעלה"}</button>

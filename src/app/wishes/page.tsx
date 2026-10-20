@@ -2,12 +2,15 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useHousehold } from "@/components/auth-provider";
-import { Alert, Empty } from "@/components/ui";
+import Link from "next/link";
+import { Alert, Empty, PersonLink } from "@/components/ui";
 import { WISH_STATUS } from "@/lib/labels";
 
+type Person = { id: string; name: string };
 type Wish = {
   id: string;
   title: string;
+  for_person_id: string | null;
   for_label: string | null;
   url: string | null;
   notes: string | null;
@@ -15,23 +18,24 @@ type Wish = {
   status: keyof typeof WISH_STATUS;
 };
 
-const blank = { title: "", for_label: "", url: "", notes: "", priority: "0", status: "idea" as Wish["status"] };
+const blank = { title: "", for_person_id: "", for_label: "", url: "", notes: "", priority: "0", status: "idea" as Wish["status"] };
 
 export default function WishesPage() {
   const gate = useHousehold();
+  const [people, setPeople] = useState<Person[]>([]);
   const [rows, setRows] = useState<Wish[] | null>(null);
   const [form, setForm] = useState(blank);
   const [error, setError] = useState("");
 
   async function load() {
     if (!gate) return;
-    const { data, error: queryError } = await gate.supabase
-      .from("hms_wishes")
-      .select("id, title, for_label, url, notes, priority, status")
-      .eq("household_id", gate.member.household_id)
-      .order("priority", { ascending: false });
-    if (queryError) setError(queryError.message);
-    setRows((data ?? []) as Wish[]);
+    const [w, p] = await Promise.all([
+      gate.supabase.from("hms_wishes").select("id, title, for_person_id, for_label, url, notes, priority, status").eq("household_id", gate.member.household_id).order("priority", { ascending: false }),
+      gate.supabase.from("hms_people").select("id, name").eq("household_id", gate.member.household_id).order("name"),
+    ]);
+    if (w.error || p.error) setError(w.error?.message || p.error?.message || "");
+    setRows((w.data ?? []) as Wish[]);
+    setPeople((p.data ?? []) as Person[]);
   }
 
   useEffect(() => {
@@ -51,6 +55,7 @@ export default function WishesPage() {
     const { error: writeError } = await gate.supabase.from("hms_wishes").insert({
       household_id: gate.member.household_id,
       title: form.title.trim(),
+      for_person_id: form.for_person_id || null,
       for_label: form.for_label.trim() || null,
       url: form.url.trim() || null,
       notes: form.notes.trim() || null,
@@ -83,16 +88,22 @@ export default function WishesPage() {
   return (
     <>
       <h1>משאלות</h1>
-      <p className="lede">רעיון, החלטה לקנות, או שכבר נקנה.</p>
       <Alert>{error}</Alert>
-      <form className="card stack" onSubmit={save}>
+      <details className="add card">
+      <summary>משאלה</summary>
+      <form className="stack" onSubmit={save}>
         <label>
           כותרת
           <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
         </label>
         <label>
-          עבור מי
-          <input value={form.for_label} onChange={(e) => setForm({ ...form, for_label: e.target.value })} />
+          עבור
+          <select value={form.for_person_id} onChange={(e) => setForm({ ...form, for_person_id: e.target.value })}>
+            <option value="">בלי שיוך</option>
+            {people.map((person) => (
+              <option key={person.id} value={person.id}>{person.name}</option>
+            ))}
+          </select>
         </label>
         <label>
           קישור
@@ -108,15 +119,18 @@ export default function WishesPage() {
         </label>
         <button className="btn btn-primary" type="submit">הוספה</button>
       </form>
+      </details>
       {!rows ? <p>טוען…</p> : null}
       {rows && rows.length === 0 ? <Empty title="רשימת המשאלות ריקה" /> : null}
       {rows?.map((row) => (
-        <article className="card" key={row.id}>
+        <article className="card tone tone-wishes" key={row.id}>
           <div className="spread">
             <h2>{row.title}</h2>
-            <span className="meta">עדיפות {row.priority}</span>
+            {row.for_person_id ? (
+              <PersonLink id={row.for_person_id} name={people.find((p) => p.id === row.for_person_id)?.name ?? ""} />
+            ) : null}
           </div>
-          <p className="meta">{row.for_label || "בלי שם"} · {WISH_STATUS[row.status]}</p>
+          <p className="meta">{WISH_STATUS[row.status]}</p>
           {row.notes ? <p>{row.notes}</p> : null}
           {row.url ? <p><a href={row.url}>קישור</a></p> : null}
           <div className="row">
@@ -125,6 +139,7 @@ export default function WishesPage() {
                 {WISH_STATUS[status]}
               </button>
             ))}
+            {row.status === "planned" ? <Link className="chip chip-shop" href="/shop">לקניות</Link> : null}
             <button className="btn btn-danger" type="button" onClick={() => remove(row.id)}>מחיקה</button>
           </div>
         </article>

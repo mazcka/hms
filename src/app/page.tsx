@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useHousehold } from "@/components/auth-provider";
-import { Alert, Empty } from "@/components/ui";
+import { TaskLine } from "@/components/task-line";
+import { Alert, Empty, PersonLink } from "@/components/ui";
 import { WEEKDAYS, addDaysIso, todayIso } from "@/lib/labels";
-
-type Task = { id: string; title: string; status: string; due_date: string | null };
+import { HMS_REFRESH, TASK_FIELDS, arrangeTasks, type Task } from "@/lib/task";
 type Item = { id: string; name: string; bought: boolean };
 type List = { id: string; name: string; hms_shop_items: Item[] };
 type ClassRow = { id: string; name: string; starts_at: string; place: string | null; person_id: string };
@@ -31,26 +31,31 @@ export default function WeekPage() {
   useEffect(() => {
     if (!gate) return;
     let active = true;
-    const today = todayIso();
-    const weekday = new Date().getDay();
-    Promise.all([
-      gate.supabase.from("hms_tasks").select("id, title, status, due_date").eq("household_id", gate.member.household_id).neq("status", "done").order("due_date", { ascending: true }),
-      gate.supabase.from("hms_shop_lists").select("id, name, hms_shop_items(id, name, bought)").eq("household_id", gate.member.household_id).order("name"),
-      gate.supabase.from("hms_classes").select("id, name, starts_at, place, person_id").eq("household_id", gate.member.household_id).eq("weekday", weekday).eq("active", true).order("starts_at"),
-      gate.supabase.from("hms_people").select("id, name").eq("household_id", gate.member.household_id),
-      gate.supabase.from("hms_events").select("id, title, event_date, event_time, remind_day_before").eq("household_id", gate.member.household_id).gte("event_date", today).order("event_date").limit(8),
-    ]).then(([t, s, c, p, e]) => {
-      if (!active) return;
-      const message = t.error?.message || s.error?.message || c.error?.message || p.error?.message || e.error?.message;
-      if (message) setError(message);
-      setTasks((t.data ?? []) as Task[]);
-      setLists((s.data ?? []) as List[]);
-      setClasses((c.data ?? []) as ClassRow[]);
-      setPeople((p.data ?? []) as Person[]);
-      setEvents((e.data ?? []) as EventRow[]);
-    });
+    function load() {
+      const today = todayIso();
+      const weekday = new Date().getDay();
+      Promise.all([
+        gate!.supabase.from("hms_tasks").select(TASK_FIELDS).eq("household_id", gate!.member.household_id),
+        gate!.supabase.from("hms_shop_lists").select("id, name, hms_shop_items(id, name, bought)").eq("household_id", gate!.member.household_id).order("name"),
+        gate!.supabase.from("hms_classes").select("id, name, starts_at, place, person_id").eq("household_id", gate!.member.household_id).eq("weekday", weekday).eq("active", true).order("starts_at"),
+        gate!.supabase.from("hms_people").select("id, name").eq("household_id", gate!.member.household_id),
+        gate!.supabase.from("hms_events").select("id, title, event_date, event_time, remind_day_before").eq("household_id", gate!.member.household_id).gte("event_date", today).order("event_date").limit(8),
+      ]).then(([t, s, c, p, e]) => {
+        if (!active) return;
+        const message = t.error?.message || s.error?.message || c.error?.message || p.error?.message || e.error?.message;
+        if (message) setError(message);
+        setTasks(arrangeTasks((t.data ?? []) as Task[]));
+        setLists((s.data ?? []) as List[]);
+        setClasses((c.data ?? []) as ClassRow[]);
+        setPeople((p.data ?? []) as Person[]);
+        setEvents((e.data ?? []) as EventRow[]);
+      });
+    }
+    load();
+    window.addEventListener(HMS_REFRESH, load);
     return () => {
       active = false;
+      window.removeEventListener(HMS_REFRESH, load);
     };
   }, [gate]);
 
@@ -68,6 +73,7 @@ export default function WeekPage() {
 
   if (!gate) return null;
   const loading = !tasks || !lists || !classes || !events;
+  const openCount = (tasks ?? []).filter((task) => task.status !== "done").length;
   const openLists = (lists ?? []).map((list) => ({
     ...list,
     pending: (list.hms_shop_items ?? []).filter((item) => !item.bought),
@@ -76,33 +82,48 @@ export default function WeekPage() {
 
   return (
     <>
-      <h1>השבוע</h1>
-      <p className="lede">היום {WEEKDAYS[new Date().getDay()]}.</p>
+      <header className="week-hero">
+        <div>
+          <p className="eyebrow">משק הבית</p>
+          <h1>השבוע</h1>
+          <p className="lede">היום {WEEKDAYS[new Date().getDay()]}.</p>
+        </div>
+        {!loading ? (
+          <div className="pills" aria-label="סיכום">
+            <span className="pill">{openCount} משימות</span>
+            <span className="pill">{openLists.length} רשימות</span>
+            <span className="pill">{classes?.length ?? 0} חוגים</span>
+          </div>
+        ) : null}
+      </header>
+      <nav className="mosaic" aria-label="מודולים">
+        <Link className="tile tile-tasks" href="/tasks"><span>פתוחות</span>{loading ? "–" : openCount} משימות</Link>
+        <Link className="tile tile-shop" href="/shop"><span>מחכה</span>{openLists.reduce((n, list) => n + list.pending.length, 0)} פריטים</Link>
+        <Link className="tile tile-plan" href="/plan"><span>היום</span>{classes?.length ?? "–"} חוגים</Link>
+        <Link className="tile tile-voice" href="/voice"><span>דיבור</span>קול</Link>
+      </nav>
       <Alert>{error}</Alert>
       {loading ? <p>טוען…</p> : null}
 
-      <section className="card">
+      <section className="card tone tone-tasks">
         <div className="spread">
-          <h2>משימות פתוחות</h2>
-          <Link href="/tasks">לכל המשימות</Link>
+          <h2>משימות</h2>
+          <Link href="/tasks">הכל</Link>
         </div>
-        {!loading && tasks?.length === 0 ? <Empty title="אין משימות פתוחות" hint="אפשר להוסיף משימת בית ידנית." /> : null}
+        {!loading && tasks?.length === 0 ? <Empty title="אין משימות" /> : null}
         <ul className="stack">
           {(tasks ?? []).map((task) => (
-            <li key={task.id}>
-              {task.title}
-              {task.due_date ? <span className="meta"> · {task.due_date}</span> : null}
-            </li>
+            <TaskLine key={task.id} task={task} />
           ))}
         </ul>
       </section>
 
-      <section className="card">
+      <section className="card tone tone-shop">
         <div className="spread">
-          <h2>קניות שלא נלקחו</h2>
-          <Link href="/shop">לקניות</Link>
+          <h2>קניות</h2>
+          <Link href="/shop">הכל</Link>
         </div>
-        {!loading && openLists.length === 0 ? <Empty title="אין פריטים שמחכים" /> : null}
+        {!loading && openLists.length === 0 ? <Empty title="הכל נלקח" /> : null}
         {openLists.map((list) => (
           <div key={list.id}>
             <strong>{list.name}</strong>
@@ -115,27 +136,26 @@ export default function WeekPage() {
         ))}
       </section>
 
-      <section className="card">
+      <section className="card tone tone-classes">
         <div className="spread">
           <h2>חוגים היום</h2>
-          <Link href="/classes">ללוח החוגים</Link>
+          <Link href="/classes">הכל</Link>
         </div>
         {!loading && classes?.length === 0 ? <Empty title="אין חוגים היום" /> : null}
         <ul className="stack">
           {(classes ?? []).map((row) => (
-            <li key={row.id}>
-              {row.starts_at.slice(0, 5)} · {row.name}
-              {personName(row.person_id) ? ` · ${personName(row.person_id)}` : ""}
-              {row.place ? ` · ${row.place}` : ""}
+            <li key={row.id} className="spread">
+              <span>{row.starts_at.slice(0, 5)} · {row.name}{row.place ? ` · ${row.place}` : ""}</span>
+              <PersonLink id={row.person_id} name={personName(row.person_id)} />
             </li>
           ))}
         </ul>
       </section>
 
-      <section className="card">
+      <section className="card tone tone-events">
         <div className="spread">
-          <h2>אירועים קרובים</h2>
-          <Link href="/events">לאירועים</Link>
+          <h2>אירועים</h2>
+          <Link href="/events">הכל</Link>
         </div>
         {!loading && events?.length === 0 ? <Empty title="אין אירועים קרובים" /> : null}
         <ul className="stack">

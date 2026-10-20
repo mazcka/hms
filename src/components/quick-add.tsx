@@ -1,0 +1,268 @@
+"use client";
+
+import { useEffect, useState, type FormEvent } from "react";
+import { useHousehold } from "@/components/auth-provider";
+import { EVENT_KINDS, WEEKDAYS } from "@/lib/labels";
+import { notifyRefresh, notifyTasksChanged } from "@/lib/task";
+
+type Kind = "task" | "shop" | "class" | "event";
+type Person = { id: string; name: string };
+type List = { id: string; name: string };
+
+const KINDS: { id: Kind; label: string }[] = [
+  { id: "task", label: "משימה" },
+  { id: "shop", label: "קניות" },
+  { id: "class", label: "חוג" },
+  { id: "event", label: "אירוע" },
+];
+
+export function QuickAdd() {
+  const gate = useHousehold();
+  const [menu, setMenu] = useState(false);
+  const [kind, setKind] = useState<Kind | null>(null);
+  const [title, setTitle] = useState("");
+  const [extra, setExtra] = useState("");
+  const [weekday, setWeekday] = useState("0");
+  const [personId, setPersonId] = useState("");
+  const [listId, setListId] = useState("");
+  const [eventKind, setEventKind] = useState<keyof typeof EVENT_KINDS>("other");
+  const [people, setPeople] = useState<Person[]>([]);
+  const [lists, setLists] = useState<List[]>([]);
+  const [error, setError] = useState("");
+  const [pending, setPending] = useState(false);
+
+  function close() {
+    setMenu(false);
+    setKind(null);
+    setTitle("");
+    setExtra("");
+    setError("");
+    setPending(false);
+  }
+
+  useEffect(() => {
+    if (!menu && !kind) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") close();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menu, kind]);
+
+  useEffect(() => {
+    if (!gate || !kind) return;
+    const hid = gate.member.household_id;
+    if (kind === "class" || kind === "event") {
+      gate.supabase.from("hms_people").select("id, name").eq("household_id", hid).order("name").then(({ data }) => {
+        const rows = (data ?? []) as Person[];
+        setPeople(rows);
+        setPersonId(rows[0]?.id ?? "");
+      });
+    }
+    if (kind === "shop") {
+      gate.supabase.from("hms_shop_lists").select("id, name").eq("household_id", hid).order("name").then(({ data }) => {
+        const rows = (data ?? []) as List[];
+        setLists(rows);
+        setListId(rows[0]?.id ?? "");
+      });
+    }
+  }, [gate, kind]);
+
+  if (!gate) return null;
+  const current = gate;
+
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    if (!kind || !title.trim()) {
+      setError("חסר שם.");
+      return;
+    }
+    setPending(true);
+    setError("");
+    const hid = current.member.household_id;
+    let message = "";
+    if (kind === "task") {
+      const { error: writeError } = await current.supabase.from("hms_tasks").insert({
+        household_id: hid,
+        title: title.trim(),
+        assignee_id: current.member.id,
+        created_by: current.member.id,
+      });
+      message = writeError?.message ?? "";
+      if (!message) notifyTasksChanged();
+    }
+    if (kind === "shop") {
+      const names = title
+        .split(/[\n,]+/)
+        .flatMap((line) => line.trim().split(/\s+/))
+        .map((name) => name.replace(/[-–]/g, " ").replace(/\s+/g, " ").trim())
+        .filter(Boolean);
+      if (names.length === 0) message = "חסרים פריטים.";
+      let target = listId;
+      if (!message && !target) {
+        const created = await current.supabase.from("hms_shop_lists").insert({ household_id: hid, name: "קניות" }).select("id").single();
+        message = created.error?.message ?? "";
+        target = (created.data as { id: string } | null)?.id ?? "";
+      }
+      if (!message && target) {
+        const { error: writeError } = await current.supabase.from("hms_shop_items").insert(
+          names.map((name) => ({ household_id: hid, list_id: target, name })),
+        );
+        message = writeError?.message ?? "";
+      }
+      if (!message) notifyRefresh();
+    }
+    if (kind === "class") {
+      if (!personId || !extra) message = "צריך אדם ושעת התחלה.";
+      else {
+        const { error: writeError } = await current.supabase.from("hms_classes").insert({
+          household_id: hid,
+          person_id: personId,
+          name: title.trim(),
+          weekday: Number(weekday),
+          starts_at: extra,
+        });
+        message = writeError?.message ?? "";
+      }
+      if (!message) notifyRefresh();
+    }
+    if (kind === "event") {
+      if (!extra) message = "חסר תאריך.";
+      else {
+        const { error: writeError } = await current.supabase.from("hms_events").insert({
+          household_id: hid,
+          title: title.trim(),
+          kind: eventKind,
+          event_date: extra,
+          created_by: current.member.id,
+        });
+        message = writeError?.message ?? "";
+      }
+      if (!message) notifyRefresh();
+    }
+    setPending(false);
+    if (message) {
+      setError(message);
+      return;
+    }
+    close();
+  }
+
+  const label = KINDS.find((item) => item.id === kind)?.label ?? "";
+
+  return (
+    <>
+      {menu ? (
+        <div className="quick-menu" role="menu" aria-label="יצירה מהירה">
+          {KINDS.map((item) => (
+            <button
+              key={item.id}
+              className="quick-choice"
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setKind(item.id);
+                setMenu(false);
+                setTitle("");
+                setExtra("");
+                setError("");
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      <button
+        className="quick-add"
+        type="button"
+        aria-expanded={menu}
+        aria-label={menu ? "סגירת יצירה" : "יצירה מהירה"}
+        onClick={() => setMenu((open) => !open)}
+      >
+        {menu ? "×" : "+"}
+      </button>
+      {kind ? (
+        <div className="modal-back" role="presentation" onClick={close}>
+          <form className="modal" role="dialog" aria-modal="true" aria-label={label} onClick={(e) => e.stopPropagation()} onSubmit={save}>
+            <header className="modal-head">
+              <p className="eyebrow">{label}</p>
+              <button className="icon-btn" type="button" aria-label="סגירה" onClick={close}>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M7 7l10 10M17 7 7 17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                </svg>
+              </button>
+            </header>
+            {kind === "shop" ? (
+              <textarea
+                className="modal-note"
+                value={title}
+                aria-label="פריטים"
+                placeholder="חלב ביצים שוקו"
+                onChange={(e) => setTitle(e.target.value)}
+                autoFocus
+              />
+            ) : (
+              <input className="modal-title" value={title} aria-label="שם" placeholder="שם" onChange={(e) => setTitle(e.target.value)} required autoFocus />
+            )}
+            {error ? <p className="alert" role="alert">{error}</p> : null}
+            {kind === "shop" && lists.length > 0 ? (
+              <label>
+                רשימה
+                <select value={listId} onChange={(e) => setListId(e.target.value)}>
+                  {lists.map((list) => (
+                    <option key={list.id} value={list.id}>{list.name}</option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+            {kind === "class" ? (
+              <div className="modal-grid">
+                <label>
+                  אדם
+                  <select value={personId} onChange={(e) => setPersonId(e.target.value)}>
+                    {people.length === 0 ? <option value="">אין אנשים</option> : null}
+                    {people.map((person) => (
+                      <option key={person.id} value={person.id}>{person.name}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  יום
+                  <select value={weekday} onChange={(e) => setWeekday(e.target.value)}>
+                    {WEEKDAYS.map((day, index) => (
+                      <option key={day} value={index}>{day}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  שעה
+                  <input type="time" value={extra} onChange={(e) => setExtra(e.target.value)} required />
+                </label>
+              </div>
+            ) : null}
+            {kind === "event" ? (
+              <div className="modal-grid">
+                <label>
+                  סוג
+                  <select value={eventKind} onChange={(e) => setEventKind(e.target.value as keyof typeof EVENT_KINDS)}>
+                    {Object.entries(EVENT_KINDS).map(([value, name]) => (
+                      <option key={value} value={value}>{name}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  תאריך
+                  <input type="date" value={extra} onChange={(e) => setExtra(e.target.value)} required />
+                </label>
+              </div>
+            ) : null}
+            <footer className="modal-foot">
+              <button className="btn btn-primary" disabled={pending} type="submit">{pending ? "שומר…" : "הוספה"}</button>
+            </footer>
+          </form>
+        </div>
+      ) : null}
+    </>
+  );
+}

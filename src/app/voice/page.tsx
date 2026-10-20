@@ -126,6 +126,7 @@ export default function VoicePage() {
         due_date: current.taskDue || null,
         due_time: current.taskTime || null,
         weekday: current.taskWeekday === "" ? null : Number(current.taskWeekday),
+        assignee_id: gate.member.id,
         created_by: gate.member.id,
       }).select("id").single();
       if (writeError) throw new Error(writeError.message);

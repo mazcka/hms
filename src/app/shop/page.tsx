@@ -41,6 +41,11 @@ export default function ShopPage() {
 
   useEffect(() => {
     load();
+    function onRefresh() {
+      load();
+    }
+    window.addEventListener("hms-refresh", onRefresh);
+    return () => window.removeEventListener("hms-refresh", onRefresh);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gate]);
 
@@ -67,23 +72,31 @@ export default function ShopPage() {
     }
   }
 
-  async function addItem(event: FormEvent) {
-    event.preventDefault();
+  async function addItem(event?: FormEvent) {
+    event?.preventDefault();
     if (!gate) return;
-    if (!listId || !itemName.trim()) {
-      setError("בחרו קטגוריה ושם פריט.");
+    const names = itemName
+      .split(/[\n,]+/)
+      .flatMap((line) => line.trim().split(/\s+/))
+      .map((name) => name.replace(/[-–]/g, " ").replace(/\s+/g, " ").trim())
+      .filter(Boolean);
+    if (!listId || names.length === 0) {
+      setError("בחרו קטגוריה והקלידו לפחות פריט אחד.");
       return;
     }
     setPending(true);
     setError("");
-    const { error: writeError } = await gate.supabase.from("hms_shop_items").insert({
-      household_id: gate.member.household_id,
-      list_id: listId,
-      name: itemName.trim(),
-      quantity: quantity ? Number(quantity) : null,
-      unit: unit.trim() || null,
-      one_off: oneOff,
-    });
+    const single = names.length === 1;
+    const { error: writeError } = await gate.supabase.from("hms_shop_items").insert(
+      names.map((name) => ({
+        household_id: gate.member.household_id,
+        list_id: listId,
+        name,
+        quantity: single && quantity ? Number(quantity) : null,
+        unit: single ? unit.trim() || null : null,
+        one_off: oneOff,
+      })),
+    );
     setPending(false);
     if (writeError) setError(writeError.message);
     else {
@@ -126,9 +139,10 @@ export default function ShopPage() {
   return (
     <>
       <h1>קניות</h1>
-      <p className="lede">קטגוריית-על קבועה, ומתחתיה פריטים. סיום סשן מאפס סימונים ומוחק חד-פעמיים.</p>
       <Alert>{error}</Alert>
-      <form className="card stack" onSubmit={addList}>
+      <details className="add card">
+      <summary>קטגוריה או פריט</summary>
+      <form className="stack" onSubmit={addList}>
         <h2>קטגוריה חדשה</h2>
         <label>
           שם
@@ -136,7 +150,7 @@ export default function ShopPage() {
         </label>
         <button className="btn btn-primary" disabled={pending} type="submit">הוספת קטגוריה</button>
       </form>
-      <form className="card stack" onSubmit={addItem}>
+      <form className="stack" onSubmit={addItem}>
         <h2>פריט</h2>
         <label>
           קטגוריה
@@ -148,8 +162,19 @@ export default function ShopPage() {
           </select>
         </label>
         <label>
-          שם הפריט
-          <input value={itemName} onChange={(e) => setItemName(e.target.value)} />
+          פריטים
+          <textarea
+            value={itemName}
+            rows={3}
+            placeholder="חלב ביצים שוקו. Enter מוסיף הכל. מוצר משתי מילים: גבינה-צהובה"
+            onChange={(e) => setItemName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                void addItem();
+              }
+            }}
+          />
         </label>
         <label>
           כמות
@@ -165,10 +190,11 @@ export default function ShopPage() {
         </label>
         <button className="btn btn-primary" disabled={pending} type="submit">הוספת פריט</button>
       </form>
+      </details>
       {!lists ? <p>טוען…</p> : null}
-      {lists && lists.length === 0 ? <Empty title="אין עדיין קטגוריות קניות" hint="התחילו מסופר, טמבוריה או בית מרקחת." /> : null}
+      {lists && lists.length === 0 ? <Empty title="אין קטגוריות" /> : null}
       {lists?.map((list) => (
-        <section className="card" key={list.id}>
+        <section className="card tone tone-shop" key={list.id}>
           <div className="spread">
             <h2>{list.name}</h2>
             <button className="btn btn-danger" type="button" onClick={() => removeList(list.id)}>מחיקת קטגוריה</button>

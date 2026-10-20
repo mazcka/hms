@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useHousehold } from "@/components/auth-provider";
-import { Alert, Empty } from "@/components/ui";
+import { Alert, Empty, PersonLink } from "@/components/ui";
 import { EVENT_KINDS } from "@/lib/labels";
 
 type Person = { id: string; name: string };
@@ -40,6 +40,11 @@ export default function EventsPage() {
 
   useEffect(() => {
     load();
+    function onRefresh() {
+      load();
+    }
+    window.addEventListener("hms-refresh", onRefresh);
+    return () => window.removeEventListener("hms-refresh", onRefresh);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gate]);
 
@@ -91,11 +96,11 @@ export default function EventsPage() {
   return (
     <>
       <h1>אירועים</h1>
-      <p className="lede">יום הולדת, אסיפה או תור לפי תאריך.</p>
       <Alert>{error}</Alert>
       {notice ? <p className="note">{notice}</p> : null}
-      <button className="btn btn-quiet" type="button" onClick={enableReminders}>הפעלת תזכורת יום לפני</button>
-      <form className="card stack" onSubmit={save}>
+      <details className="add card">
+      <summary>אירוע חדש</summary>
+      <form className="stack" onSubmit={save}>
         <label>
           כותרת
           <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
@@ -133,17 +138,21 @@ export default function EventsPage() {
           <input type="checkbox" checked={form.remind_day_before} onChange={(e) => setForm({ ...form, remind_day_before: e.target.checked })} />
           תזכורת יום לפני
         </label>
-        <button className="btn btn-primary" type="submit">שמירת אירוע</button>
+        <button className="btn btn-primary" type="submit">שמירה</button>
+        <button className="btn btn-quiet" type="button" onClick={enableReminders}>תזכורת</button>
       </form>
+      </details>
       {!rows ? <p>טוען…</p> : null}
       {rows && rows.length === 0 ? <Empty title="אין אירועים" /> : null}
       {rows?.map((row) => (
-        <article className="card" key={row.id}>
-          <h2>{row.title}</h2>
+        <article className="card tone tone-events" key={row.id}>
+          <div className="spread">
+            <h2>{row.title}</h2>
+            {row.person_id ? <PersonLink id={row.person_id} name={people.find((p) => p.id === row.person_id)?.name ?? ""} /> : null}
+          </div>
           <p className="meta">
             {EVENT_KINDS[row.kind]} · {row.event_date}
             {row.event_time ? ` ${row.event_time.slice(0, 5)}` : ""}
-            {row.person_id ? ` · ${people.find((p) => p.id === row.person_id)?.name ?? ""}` : ""}
           </p>
           {row.notes ? <p>{row.notes}</p> : null}
           <button className="btn btn-danger" type="button" onClick={() => remove(row.id)}>מחיקה</button>
