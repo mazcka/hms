@@ -1,10 +1,12 @@
 "use client";
 
+import { Circle, Gift } from "lucide-react";
 import Link from "next/link";
+import { IconButton, Tip } from "@/components/menu";
 import { useEffect, useState } from "react";
 import { useHousehold } from "@/components/auth-provider";
 import { TaskLine } from "@/components/task-line";
-import { Alert, Empty, PersonLink } from "@/components/ui";
+import { Alert, Empty, PageHead, PersonLink, Skeleton } from "@/components/ui";
 import { WEEKDAYS, addDaysIso, todayIso } from "@/lib/labels";
 import { HMS_REFRESH, TASK_FIELDS, arrangeTasks, type Task } from "@/lib/task";
 type Item = { id: string; name: string; quantity: number | null; unit: string | null; bought: boolean };
@@ -104,108 +106,105 @@ export default function WeekPage() {
     if (writeError) setError(writeError.message);
   }
 
+  const visibleTasks = (tasks ?? []).filter((task) => task.status !== "done").slice(0, 5);
+  const visibleShop = shopLists
+    .map((list) => ({ ...list, items: list.items.filter((item) => !item.bought).slice(0, 4) }))
+    .filter((list) => list.items.length > 0);
+
   return (
     <>
-      <header className="week-hero">
-        <div>
-          <p className="eyebrow">משק הבית</p>
-          <h1>השבוע</h1>
-          <p className="lede">היום {WEEKDAYS[new Date().getDay()]}.</p>
-        </div>
-        {!loading ? (
-          <div className="pills" aria-label="סיכום">
-            <span className="pill">{openCount} משימות</span>
-            <span className="pill">{shopLists.filter((list) => list.items.some((item) => !item.bought)).length} רשימות</span>
-            <span className="pill">{classes?.length ?? 0} חוגים</span>
-          </div>
-        ) : null}
-      </header>
-      <nav className="mosaic" aria-label="מודולים">
-        <Link className="tile tile-tasks" href="/tasks"><span>פתוחות</span>{loading ? "–" : openCount} משימות</Link>
-        <Link className="tile tile-shop" href="/shop"><span>מחכה</span>{pendingCount} פריטים</Link>
-        <Link className="tile tile-plan" href="/classes"><span>היום</span>{classes?.length ?? "–"} חוגים</Link>
-        <Link className="tile tile-people" href="/events"><span>קרובים</span>{events?.length ?? "–"} אירועים</Link>
-        <Link className="tile tile-wishes" href="/wishes"><span>רשימה</span>משאלות</Link>
-      </nav>
+      <PageHead
+        title="השבוע"
+        lede={WEEKDAYS[new Date().getDay()]}
+        action={
+          <Tip label="משאלות">
+            <Link className="icon-btn home-link" href="/wishes" aria-label="משאלות">
+              <Gift size={18} aria-hidden="true" />
+            </Link>
+          </Tip>
+        }
+      />
       <Alert>{error}</Alert>
-      {loading ? <p>טוען…</p> : null}
-
-      <section className="card tone tone-tasks">
-        <div className="spread">
-          <h2>משימות</h2>
-          <Link href="/tasks">הכל</Link>
-        </div>
-        {!loading && tasks?.length === 0 ? <Empty title="אין משימות" /> : null}
-        <ul className="stack">
-          {(tasks ?? []).map((task) => (
-            <TaskLine key={task.id} task={task} />
-          ))}
-        </ul>
-      </section>
-
-      <section className="card tone tone-shop">
-        <div className="spread">
-          <h2>קניות</h2>
-          <Link href="/shop">הכל</Link>
-        </div>
-        {!loading && shopLists.length === 0 ? <Empty title="אין פריטים" /> : null}
-        {shopLists.map((list) => (
-          <div key={list.id}>
-            <strong>{list.name}</strong>
-            <ul className="stack">
-              {list.items.map((item) => (
-                <li key={item.id}>
-                  <button
-                    className="shop-line"
-                    type="button"
-                    aria-pressed={item.bought}
-                    aria-label={item.bought ? `בטל סימון של ${item.name}` : `סמן את ${item.name} כנקנה`}
-                    onClick={() => toggleBought(item)}
-                  >
-                    <span className="shop-amount">{formatAmount(item) || "–"}</span>
-                    <span className={item.bought ? "shop-line-name bought" : "shop-line-name"}>{item.name}</span>
-                    <svg className="shop-line-check" viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="m6 12.5 4 4L18 8" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" opacity={item.bought ? 1 : 0.28} />
-                    </svg>
-                  </button>
-                </li>
-              ))}
-            </ul>
+      <div className="bento">
+        <section className="card panel panel-tasks">
+          <div className="spread">
+            <h2>משימות פתוחות</h2>
+            <Link href="/tasks">{openCount}</Link>
           </div>
-        ))}
-      </section>
+          {loading ? <Skeleton rows={4} /> : null}
+          {!loading && visibleTasks.length === 0 ? (
+            <Empty title="אין משימות פתוחות" action={<Link className="btn btn-primary" href="/tasks">הוספת משימה</Link>} />
+          ) : null}
+          <ul className="stack">
+            {visibleTasks.map((task) => (
+              <TaskLine key={task.id} task={task} />
+            ))}
+          </ul>
+        </section>
 
-      <section className="card tone tone-classes">
-        <div className="spread">
-          <h2>חוגים היום</h2>
-          <Link href="/classes">הכל</Link>
-        </div>
-        {!loading && classes?.length === 0 ? <Empty title="אין חוגים היום" /> : null}
-        <ul className="stack">
-          {(classes ?? []).map((row) => (
-            <li key={row.id} className="spread">
-              <span>{row.starts_at.slice(0, 5)} · {row.name}{row.place ? ` · ${row.place}` : ""}</span>
-              <PersonLink id={row.person_id} name={personName(row.person_id)} />
-            </li>
+        <section className="card panel panel-shop">
+          <div className="spread">
+            <h2>לקנות</h2>
+            <Link href="/shop">{pendingCount}</Link>
+          </div>
+          {loading ? <Skeleton rows={3} /> : null}
+          {!loading && visibleShop.length === 0 ? (
+            <Empty title="הרשימה ריקה" action={<Link className="btn btn-quiet" href="/shop">לקניות</Link>} />
+          ) : null}
+          {visibleShop.map((list) => (
+            <div key={list.id}>
+              <p className="meta">{list.name}</p>
+              <ul className="stack">
+                {list.items.map((item) => (
+                  <li key={item.id} className="row-line">
+                    <IconButton label={`סמן את ${item.name} כנקנה`} onClick={() => toggleBought(item)}>
+                      <Circle size={18} aria-hidden="true" />
+                    </IconButton>
+                    <div className="row-open shop-pair">
+                      <span className="shop-amount">{formatAmount(item) || "–"}</span>
+                      <span>{item.name}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
           ))}
-        </ul>
-      </section>
+        </section>
 
-      <section className="card tone tone-events">
-        <div className="spread">
-          <h2>אירועים</h2>
-          <Link href="/events">הכל</Link>
-        </div>
-        {!loading && events?.length === 0 ? <Empty title="אין אירועים קרובים" /> : null}
-        <ul className="stack">
-          {(events ?? []).map((event) => (
-            <li key={event.id}>
-              {event.event_date}
-              {event.event_time ? ` ${event.event_time.slice(0, 5)}` : ""} · {event.title}
-            </li>
-          ))}
-        </ul>
-      </section>
+        <section className="card panel">
+          <div className="spread">
+            <h2>חוגים היום</h2>
+            <Link href="/classes">הכל</Link>
+          </div>
+          {loading ? <Skeleton rows={2} /> : null}
+          {!loading && classes?.length === 0 ? <Empty title="אין חוגים היום" /> : null}
+          <ul className="stack">
+            {(classes ?? []).map((row) => (
+              <li key={row.id} className="spread">
+                <span><strong>{row.starts_at.slice(0, 5)}</strong> {row.name}</span>
+                <PersonLink id={row.person_id} name={personName(row.person_id)} />
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="card panel">
+          <div className="spread">
+            <h2>אירועים</h2>
+            <Link href="/events">הכל</Link>
+          </div>
+          {loading ? <Skeleton rows={2} /> : null}
+          {!loading && events?.length === 0 ? <Empty title="אין אירועים קרובים" /> : null}
+          <ul className="stack">
+            {(events ?? []).slice(0, 4).map((event) => (
+              <li key={event.id} className="spread">
+                <span>{event.title}</span>
+                <span className="meta">{event.event_date.slice(5)}{event.event_time ? ` ${event.event_time.slice(0, 5)}` : ""}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </div>
     </>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { X } from "lucide-react";
 import {
   createContext,
   useContext,
@@ -9,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { useHousehold } from "@/components/auth-provider";
+import { IconButton } from "@/components/menu";
 import { TASK_STATUS, WEEKDAYS } from "@/lib/labels";
 import { notifyTasksChanged, type Task } from "@/lib/task";
 
@@ -142,11 +144,9 @@ export function TaskEditorProvider({ children }: { children: ReactNode }) {
           >
             <header className="modal-head">
               <p className="eyebrow">משימה</p>
-              <button className="icon-btn" type="button" aria-label="סגירה" onClick={() => setTask(null)}>
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M7 7l10 10M17 7 7 17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                </svg>
-              </button>
+              <IconButton label="סגירה" onClick={() => setTask(null)}>
+                <X size={18} aria-hidden="true" />
+              </IconButton>
             </header>
             <input
               id="task-edit-title"

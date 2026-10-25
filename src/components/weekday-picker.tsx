@@ -1,5 +1,6 @@
 "use client";
 
+import { Tip } from "@/components/menu";
 import { WEEKDAYS } from "@/lib/labels";
 
 const DAY_LETTERS = ["א", "ב", "ג", "ד", "ה", "ו", "ש"];
@@ -14,21 +15,22 @@ export function WeekdayPicker({ value, onChange }: { value: number[]; onChange: 
   return (
     <div className="row" role="group" aria-label="ימים">
       {WEEKDAYS.map((day, index) => (
-        <button
-          key={day}
-          className="choice"
-          type="button"
-          aria-label={day}
-          aria-pressed={selected.includes(index)}
-          onClick={() => {
-            const next = selected.includes(index)
-              ? selected.filter((dayIndex) => dayIndex !== index)
-              : [...selected, index];
-            onChange(next.sort((a, b) => a - b));
-          }}
-        >
-          {DAY_LETTERS[index]}
-        </button>
+        <Tip key={day} label={day}>
+          <button
+            className="choice"
+            type="button"
+            aria-label={day}
+            aria-pressed={selected.includes(index)}
+            onClick={() => {
+              const next = selected.includes(index)
+                ? selected.filter((dayIndex) => dayIndex !== index)
+                : [...selected, index];
+              onChange(next.sort((a, b) => a - b));
+            }}
+          >
+            {DAY_LETTERS[index]}
+          </button>
+        </Tip>
       ))}
     </div>
   );

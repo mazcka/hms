@@ -3,7 +3,9 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useHousehold } from "@/components/auth-provider";
 import { PlaceField } from "@/components/place-field";
-import { Alert, Empty, PersonLink } from "@/components/ui";
+import { MenuItem, RowMenu } from "@/components/menu";
+import { Sheet } from "@/components/sheet";
+import { Alert, Empty, PageHead, PersonLink, Skeleton } from "@/components/ui";
 import { EVENT_KINDS } from "@/lib/labels";
 
 type Person = { id: string; name: string };
@@ -26,6 +28,7 @@ export default function EventsPage() {
   const [people, setPeople] = useState<Person[]>([]);
   const [rows, setRows] = useState<EventRow[] | null>(null);
   const [form, setForm] = useState(blank);
+  const [composer, setComposer] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
@@ -75,6 +78,7 @@ export default function EventsPage() {
     if (writeError) setError(writeError.message);
     else {
       setForm(blank);
+      setComposer(false);
       await load();
     }
   }
@@ -98,11 +102,10 @@ export default function EventsPage() {
 
   return (
     <>
-      <h1>אירועים</h1>
+      <PageHead title="אירועים" action={<button className="btn btn-primary" type="button" onClick={() => setComposer(true)}>אירוע חדש</button>} />
       <Alert>{error}</Alert>
       {notice ? <p className="note">{notice}</p> : null}
-      <details className="add card">
-      <summary>אירוע חדש</summary>
+      <Sheet open={composer} title="אירוע חדש" onClose={() => setComposer(false)}>
       <form className="stack" onSubmit={save}>
         <label>
           כותרת
@@ -153,24 +156,30 @@ export default function EventsPage() {
         </details>
         <button className="btn btn-primary" type="submit">שמירה</button>
       </form>
-      </details>
-      {!rows ? <p>טוען…</p> : null}
-      {rows && rows.length === 0 ? <Empty title="אין אירועים" /> : null}
-      {rows?.map((row) => (
-        <article className="card tone tone-events" key={row.id}>
-          <div className="spread">
-            <h2>{row.title}</h2>
-            {row.person_id ? <PersonLink id={row.person_id} name={people.find((p) => p.id === row.person_id)?.name ?? ""} /> : null}
-          </div>
-          <p className="meta">
-            {EVENT_KINDS[row.kind]} · {row.event_date}
-            {row.event_time ? ` ${row.event_time.slice(0, 5)}` : ""}
-            {row.place ? ` · ${row.place}` : ""}
-          </p>
-          {row.notes ? <p>{row.notes}</p> : null}
-          <button className="btn btn-danger" type="button" onClick={() => remove(row.id)}>מחיקה</button>
-        </article>
-      ))}
+      </Sheet>
+      {!rows ? <Skeleton rows={3} /> : null}
+      {rows && rows.length === 0 ? <Empty title="אין אירועים" action={<button className="btn btn-primary" type="button" onClick={() => setComposer(true)}>אירוע חדש</button>} /> : null}
+      {rows && rows.length > 0 ? (
+        <section className="card">
+          <ul className="stack">
+            {rows.map((row) => (
+              <li key={row.id} className="row-line">
+                <div className="row-open">
+                  <span>{row.title}</span>
+                  <span className="meta">
+                    {EVENT_KINDS[row.kind]} {row.event_date}
+                    {row.event_time ? ` ${row.event_time.slice(0, 5)}` : ""}
+                    {row.person_id ? <PersonLink id={row.person_id} name={people.find((p) => p.id === row.person_id)?.name ?? ""} /> : null}
+                  </span>
+                </div>
+                <RowMenu>
+                  <MenuItem danger onSelect={() => remove(row.id)}>מחיקה</MenuItem>
+                </RowMenu>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </>
   );
 }

@@ -3,7 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useHousehold } from "@/components/auth-provider";
 import { TaskLine } from "@/components/task-line";
-import { Alert, Empty } from "@/components/ui";
+import { Alert, Empty, PageHead, Skeleton } from "@/components/ui";
 import { TASK_FIELDS, TASKS_CHANGED, arrangeTasks, notifyTasksChanged, type Task } from "@/lib/task";
 
 export default function TasksPage() {
@@ -62,9 +62,9 @@ export default function TasksPage() {
 
   return (
     <>
-      <h1>משימות</h1>
+      <PageHead title="משימות" />
       <Alert>{error}</Alert>
-      <form className="row add" onSubmit={save}>
+      <form className="row add card composer" onSubmit={save}>
         <input
           value={title}
           aria-label="משימה חדשה"
@@ -74,8 +74,8 @@ export default function TasksPage() {
         />
         <button className="btn btn-primary" disabled={pending} type="submit">{pending ? "שומר…" : "הוספה"}</button>
       </form>
-      {!rows ? <p>טוען…</p> : null}
-      {rows && rows.length === 0 ? <Empty title="אין משימות" /> : null}
+      {!rows ? <Skeleton rows={4} /> : null}
+      {rows && rows.length === 0 ? <Empty title="אין משימות" hint="כתבו כותרת למעלה. תאריך ואחראי נשמרים בעריכה." /> : null}
       {rows && rows.length > 0 ? (
         <section className="card tone tone-tasks">
           <ul className="stack">

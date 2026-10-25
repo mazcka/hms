@@ -1,6 +1,8 @@
 "use client";
 
+import { Plus, X } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
+import { IconButton } from "@/components/menu";
 import { useRouter } from "next/navigation";
 import { useHousehold } from "@/components/auth-provider";
 import { PlaceField } from "@/components/place-field";
@@ -211,25 +213,22 @@ export function QuickAdd() {
           ))}
         </div>
       ) : null}
-      <button
+      <IconButton
         className="quick-add"
-        type="button"
         aria-expanded={menu}
-        aria-label={menu ? "סגירת יצירה" : "יצירה מהירה"}
+        label={menu ? "סגירת יצירה" : "יצירה מהירה"}
         onClick={() => setMenu((open) => !open)}
       >
-        {menu ? "×" : "+"}
-      </button>
+        {menu ? <X size={22} aria-hidden="true" /> : <Plus size={22} aria-hidden="true" />}
+      </IconButton>
       {kind ? (
         <div className="modal-back" role="presentation" onClick={close}>
           <form className="modal" role="dialog" aria-modal="true" aria-label={label} onClick={(e) => e.stopPropagation()} onSubmit={save}>
             <header className="modal-head">
               <p className="eyebrow">{label}</p>
-              <button className="icon-btn" type="button" aria-label="סגירה" onClick={close}>
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M7 7l10 10M17 7 7 17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                </svg>
-              </button>
+              <IconButton label="סגירה" onClick={close}>
+                <X size={18} aria-hidden="true" />
+              </IconButton>
             </header>
             {kind === "shop" ? (
               <textarea

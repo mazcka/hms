@@ -1,8 +1,11 @@
 "use client";
 
+import { Check, Circle, Plus, X } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useHousehold } from "@/components/auth-provider";
-import { Alert, Empty } from "@/components/ui";
+import { IconButton, MenuItem, RowMenu } from "@/components/menu";
+import { Sheet } from "@/components/sheet";
+import { Alert, Empty, PageHead, Skeleton } from "@/components/ui";
 import { notifyRefresh } from "@/lib/task";
 import { formatParsedAmount, parseShoppingText } from "@/lib/shop-list";
 
@@ -30,6 +33,7 @@ export default function ShopPage() {
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const [addingList, setAddingList] = useState(false);
+  const [addingItems, setAddingItems] = useState(false);
 
   async function load() {
     if (!gate) return;
@@ -105,6 +109,7 @@ export default function ShopPage() {
     if (writeError) setError(writeError.message);
     else {
       setDraft("");
+      setAddingItems(false);
       await load();
     }
   }
@@ -144,12 +149,10 @@ export default function ShopPage() {
 
   return (
     <>
-      <h1>קניות</h1>
+      <PageHead title="קניות" action={<button className="btn btn-primary" type="button" onClick={() => setAddingItems(true)}>פריטים</button>} />
       <Alert>{error}</Alert>
-      <details className="add card">
-      <summary>פריט</summary>
+      <Sheet open={addingItems} title="פריטים חדשים" onClose={() => setAddingItems(false)}>
       <form className="stack" onSubmit={addItem}>
-        <h2>פריט</h2>
         <div className="category-pick">
           <label>
             קטגוריה
@@ -160,9 +163,9 @@ export default function ShopPage() {
               ))}
             </select>
           </label>
-          <button className="icon-btn" type="button" aria-label="קטגוריה חדשה" onClick={() => { setError(""); setAddingList(true); }}>
-            +
-          </button>
+          <IconButton label="קטגוריה חדשה" onClick={() => { setError(""); setAddingList(true); }}>
+            <Plus size={18} aria-hidden="true" />
+          </IconButton>
         </div>
         <label>
           פריטים
@@ -185,17 +188,15 @@ export default function ShopPage() {
         ) : null}
         <button className="btn btn-primary" disabled={pending} type="submit">הוספת פריטים</button>
       </form>
-      </details>
+      </Sheet>
       {addingList ? (
         <div className="modal-back" role="presentation" onClick={() => setAddingList(false)}>
           <form className="modal" role="dialog" aria-modal="true" aria-label="קטגוריה חדשה" onClick={(e) => e.stopPropagation()} onSubmit={addList}>
             <header className="modal-head">
               <p className="eyebrow">קטגוריה חדשה</p>
-              <button className="icon-btn" type="button" aria-label="סגירה" onClick={() => setAddingList(false)}>
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M7 7l10 10M17 7 7 17" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                </svg>
-              </button>
+              <IconButton label="סגירה" onClick={() => setAddingList(false)}>
+                <X size={18} aria-hidden="true" />
+              </IconButton>
             </header>
             <label>
               שם
@@ -207,36 +208,38 @@ export default function ShopPage() {
           </form>
         </div>
       ) : null}
-      {!lists ? <p>טוען…</p> : null}
-      {lists && lists.length === 0 ? <Empty title="אין קטגוריות" /> : null}
+      {!lists ? <Skeleton rows={3} /> : null}
+      {lists && lists.length === 0 ? <Empty title="אין קטגוריות" hint="הוסיפו קטגוריה ואז פריטים." action={<button className="btn btn-primary" type="button" onClick={() => setAddingList(true)}>קטגוריה חדשה</button>} /> : null}
       {lists?.map((list) => (
         <section className="card tone tone-shop" key={list.id}>
-          <div className="category-head">
-            <button className="icon-btn icon-btn-danger" type="button" aria-label={`מחיקת ${list.name}`} onClick={() => removeList(list.id)}>
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M5 8h14M9 8V6h6v2M8 8l1 12h6l1-12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-              </svg>
-            </button>
+          <div className="spread">
             <h2>{list.name}</h2>
+            <RowMenu label={`פעולות ${list.name}`}>
+              <MenuItem onSelect={() => endSession(list.id)}>סיום סשן</MenuItem>
+              <MenuItem danger onSelect={() => removeList(list.id)}>מחיקת קטגוריה</MenuItem>
+            </RowMenu>
           </div>
           {(list.hms_shop_items ?? []).length === 0 ? <Empty title="אין פריטים בקטגוריה" /> : null}
           <ul className="stack">
             {(list.hms_shop_items ?? []).map((item) => (
-              <li key={item.id}>
-                <button className="shop-line" type="button" onClick={() => toggle(item)} aria-pressed={item.bought}>
+              <li key={item.id} className="row-line">
+                <IconButton
+                  label={item.bought ? `בטל סימון של ${item.name}` : `סמן את ${item.name} כנקנה`}
+                  aria-pressed={item.bought}
+                  onClick={() => toggle(item)}
+                >
+                  {item.bought ? <Check size={18} aria-hidden="true" /> : <Circle size={18} aria-hidden="true" />}
+                </IconButton>
+                <div className="row-open shop-pair">
                   <span className="shop-amount">{formatAmount(item) || "–"}</span>
-                  <span className={item.bought ? "shop-line-name bought" : "shop-line-name"}>
+                  <span className={item.bought ? "bought" : undefined}>
                     {item.name}
-                    {item.one_off ? <span className="meta"> · חד-פעמי</span> : null}
+                    {item.one_off ? <span className="meta"> חד-פעמי</span> : null}
                   </span>
-                  <svg className="shop-line-check" viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="m6 12.5 4 4L18 8" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" opacity={item.bought ? 1 : 0.28} />
-                  </svg>
-                </button>
+                </div>
               </li>
             ))}
           </ul>
-          <button className="btn btn-secondary" type="button" onClick={() => endSession(list.id)}>סיום סשן</button>
         </section>
       ))}
     </>

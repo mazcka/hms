@@ -3,7 +3,9 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useHousehold } from "@/components/auth-provider";
 import { PlaceField } from "@/components/place-field";
-import { Alert, Empty, PersonLink } from "@/components/ui";
+import { MenuItem, RowMenu } from "@/components/menu";
+import { Sheet } from "@/components/sheet";
+import { Alert, Empty, PageHead, PersonLink, Skeleton } from "@/components/ui";
 import { classDays, WeekdayPicker } from "@/components/weekday-picker";
 import { RELATIONS, WEEKDAYS } from "@/lib/labels";
 
@@ -97,6 +99,7 @@ export default function ClassesPage() {
     if (writeError) setError(writeError.message);
     else {
       setEditingId(null);
+      setFormOpen(false);
       setForm({ ...form, name: "", starts_at: "", ends_at: "", place: "" });
       await load();
     }
@@ -149,17 +152,25 @@ export default function ClassesPage() {
 
   return (
     <>
-      <h1>חוגים</h1>
+      <PageHead
+        title="חוגים"
+        action={<button className="btn btn-primary" type="button" onClick={() => { setEditingId(null); setFormOpen(true); }}>חוג חדש</button>}
+      />
       <Alert>{error}</Alert>
       <details className="add card">
         <summary>אנשים</summary>
         <div className="stack">
           <ul className="stack">
             {people.map((person) => (
-              <li key={person.id} className="spread">
-                <span>{person.name} · {RELATIONS[person.relation]}</span>
-                <button className="btn btn-danger" type="button" onClick={() => removePerson(person.id)}>מחיקה</button>
-              </li>
+                <li key={person.id} className="row-line">
+                  <div className="row-open">
+                    <span>{person.name}</span>
+                    <span className="meta">{RELATIONS[person.relation]}</span>
+                  </div>
+                  <RowMenu label={`פעולות ${person.name}`}>
+                    <MenuItem danger onSelect={() => removePerson(person.id)}>מחיקה</MenuItem>
+                  </RowMenu>
+                </li>
             ))}
           </ul>
           <div className="row">
@@ -173,8 +184,7 @@ export default function ClassesPage() {
           </div>
         </div>
       </details>
-      <details className="add card" open={formOpen} onToggle={(event) => setFormOpen(event.currentTarget.open)}>
-      <summary>{editingId ? "עריכת חוג" : "חוג"}</summary>
+      <Sheet open={formOpen} title={editingId ? "עריכת חוג" : "חוג חדש"} onClose={() => { setFormOpen(false); setEditingId(null); }}>
       <form className="stack" onSubmit={addClass}>
         <label>
           שם החוג
@@ -212,9 +222,9 @@ export default function ClassesPage() {
           {editingId ? <button className="btn btn-quiet" type="button" onClick={cancelEdit}>ביטול</button> : null}
         </div>
       </form>
-      </details>
-      {!rows ? <p>טוען…</p> : null}
-      {rows && rows.length === 0 ? <Empty title="אין חוגים" /> : null}
+      </Sheet>
+      {!rows ? <Skeleton rows={4} /> : null}
+      {rows && rows.length === 0 ? <Empty title="אין חוגים" action={<button className="btn btn-primary" type="button" onClick={() => setFormOpen(true)}>חוג חדש</button>} /> : null}
       {WEEKDAYS.map((day, index) => {
         const dayRows = (rows ?? []).filter((row) => classDays(row).includes(index));
         if (!dayRows.length) return null;
@@ -231,30 +241,11 @@ export default function ClassesPage() {
                     {row.active ? "" : " · מושהה"}{" "}
                     <PersonLink id={row.person_id} name={people.find((p) => p.id === row.person_id)?.name ?? ""} />
                   </span>
-                  <span className="task-actions">
-                    <button className="icon-btn" type="button" aria-label="עריכה" onClick={() => startEdit(row)}>
-                      <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M4 20h4l10-10-4-4L4 16z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-                        <path d="m13 7 4 4" fill="none" stroke="currentColor" strokeWidth="1.8" />
-                      </svg>
-                    </button>
-                    <button className="icon-btn" type="button" aria-label={row.active ? "השהיה" : "הפעלה"} onClick={() => toggle(row)}>
-                      {row.active ? (
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                          <path d="M8 6v12M16 6v12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-                        </svg>
-                      ) : (
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                          <path d="M8 6v12l10-6z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-                        </svg>
-                      )}
-                    </button>
-                    <button className="icon-btn icon-btn-danger" type="button" aria-label="מחיקה" onClick={() => remove(row.id)}>
-                      <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path d="M5 8h14M9 8V6h6v2M8 8l1 12h6l1-12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-                      </svg>
-                    </button>
-                  </span>
+                  <RowMenu>
+                    <MenuItem onSelect={() => startEdit(row)}>עריכה</MenuItem>
+                    <MenuItem onSelect={() => toggle(row)}>{row.active ? "השהיה" : "הפעלה"}</MenuItem>
+                    <MenuItem danger onSelect={() => remove(row.id)}>מחיקה</MenuItem>
+                  </RowMenu>
                 </li>
               ))}
             </ul>
