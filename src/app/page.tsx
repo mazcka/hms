@@ -1,13 +1,15 @@
 "use client";
 
+import { Circle, Gift } from "lucide-react";
 import Link from "next/link";
+import { IconButton, Tip } from "@/components/menu";
 import { useEffect, useState } from "react";
 import { useHousehold } from "@/components/auth-provider";
-import { Alert, Empty } from "@/components/ui";
+import { TaskLine } from "@/components/task-line";
+import { Alert, Empty, PageHead, PersonLink, Skeleton } from "@/components/ui";
 import { WEEKDAYS, addDaysIso, todayIso } from "@/lib/labels";
-
-type Task = { id: string; title: string; status: string; due_date: string | null };
-type Item = { id: string; name: string; bought: boolean };
+import { HMS_REFRESH, TASK_FIELDS, arrangeTasks, type Task } from "@/lib/task";
+type Item = { id: string; name: string; quantity: number | null; unit: string | null; bought: boolean };
 type List = { id: string; name: string; hms_shop_items: Item[] };
 type ClassRow = { id: string; name: string; starts_at: string; place: string | null; person_id: string };
 type Person = { id: string; name: string };
@@ -31,26 +33,31 @@ export default function WeekPage() {
   useEffect(() => {
     if (!gate) return;
     let active = true;
-    const today = todayIso();
-    const weekday = new Date().getDay();
-    Promise.all([
-      gate.supabase.from("hms_tasks").select("id, title, status, due_date").eq("household_id", gate.member.household_id).neq("status", "done").order("due_date", { ascending: true }),
-      gate.supabase.from("hms_shop_lists").select("id, name, hms_shop_items(id, name, bought)").eq("household_id", gate.member.household_id).order("name"),
-      gate.supabase.from("hms_classes").select("id, name, starts_at, place, person_id").eq("household_id", gate.member.household_id).eq("weekday", weekday).eq("active", true).order("starts_at"),
-      gate.supabase.from("hms_people").select("id, name").eq("household_id", gate.member.household_id),
-      gate.supabase.from("hms_events").select("id, title, event_date, event_time, remind_day_before").eq("household_id", gate.member.household_id).gte("event_date", today).order("event_date").limit(8),
-    ]).then(([t, s, c, p, e]) => {
-      if (!active) return;
-      const message = t.error?.message || s.error?.message || c.error?.message || p.error?.message || e.error?.message;
-      if (message) setError(message);
-      setTasks((t.data ?? []) as Task[]);
-      setLists((s.data ?? []) as List[]);
-      setClasses((c.data ?? []) as ClassRow[]);
-      setPeople((p.data ?? []) as Person[]);
-      setEvents((e.data ?? []) as EventRow[]);
-    });
+    function load() {
+      const today = todayIso();
+      const weekday = new Date().getDay();
+      Promise.all([
+        gate!.supabase.from("hms_tasks").select(TASK_FIELDS).eq("household_id", gate!.member.household_id),
+        gate!.supabase.from("hms_shop_lists").select("id, name, hms_shop_items(id, name, quantity, unit, bought)").eq("household_id", gate!.member.household_id).order("name"),
+        gate!.supabase.from("hms_classes").select("id, name, starts_at, place, person_id, weekdays, weekday").eq("household_id", gate!.member.household_id).contains("weekdays", [weekday]).eq("active", true).order("starts_at"),
+        gate!.supabase.from("hms_people").select("id, name").eq("household_id", gate!.member.household_id),
+        gate!.supabase.from("hms_events").select("id, title, event_date, event_time, remind_day_before").eq("household_id", gate!.member.household_id).gte("event_date", today).order("event_date").limit(8),
+      ]).then(([t, s, c, p, e]) => {
+        if (!active) return;
+        const message = t.error?.message || s.error?.message || c.error?.message || p.error?.message || e.error?.message;
+        if (message) setError(message);
+        setTasks(arrangeTasks((t.data ?? []) as Task[]));
+        setLists((s.data ?? []) as List[]);
+        setClasses((c.data ?? []) as ClassRow[]);
+        setPeople((p.data ?? []) as Person[]);
+        setEvents((e.data ?? []) as EventRow[]);
+      });
+    }
+    load();
+    window.addEventListener(HMS_REFRESH, load);
     return () => {
       active = false;
+      window.removeEventListener(HMS_REFRESH, load);
     };
   }, [gate]);
 
@@ -68,85 +75,136 @@ export default function WeekPage() {
 
   if (!gate) return null;
   const loading = !tasks || !lists || !classes || !events;
-  const openLists = (lists ?? []).map((list) => ({
-    ...list,
-    pending: (list.hms_shop_items ?? []).filter((item) => !item.bought),
-  })).filter((list) => list.pending.length > 0);
+  const openCount = (tasks ?? []).filter((task) => task.status !== "done").length;
+  const shopLists = (lists ?? [])
+    .map((list) => ({
+      ...list,
+      items: [...(list.hms_shop_items ?? [])].sort((a, b) => Number(a.bought) - Number(b.bought)),
+    }))
+    .filter((list) => list.items.length > 0);
+  const pendingCount = shopLists.reduce((n, list) => n + list.items.filter((item) => !item.bought).length, 0);
   const personName = (id: string) => people.find((p) => p.id === id)?.name ?? "";
+
+  function formatAmount(item: Item) {
+    if (item.quantity != null && item.unit) return `${item.quantity} ${item.unit}`;
+    if (item.quantity != null) return String(item.quantity);
+    return item.unit ?? "";
+  }
+
+  async function toggleBought(item: Item) {
+    if (!gate) return;
+    const bought = !item.bought;
+    setLists((current) =>
+      (current ?? []).map((list) => ({
+        ...list,
+        hms_shop_items: (list.hms_shop_items ?? []).map((row) =>
+          row.id === item.id ? { ...row, bought } : row,
+        ),
+      })),
+    );
+    const { error: writeError } = await gate.supabase.from("hms_shop_items").update({ bought }).eq("id", item.id);
+    if (writeError) setError(writeError.message);
+  }
+
+  const visibleTasks = (tasks ?? []).filter((task) => task.status !== "done").slice(0, 5);
+  const visibleShop = shopLists
+    .map((list) => ({ ...list, items: list.items.filter((item) => !item.bought).slice(0, 4) }))
+    .filter((list) => list.items.length > 0);
 
   return (
     <>
-      <h1>השבוע</h1>
-      <p className="lede">היום {WEEKDAYS[new Date().getDay()]}.</p>
+      <PageHead
+        title="השבוע"
+        lede={WEEKDAYS[new Date().getDay()]}
+        action={
+          <Tip label="משאלות">
+            <Link className="icon-btn home-link" href="/wishes" aria-label="משאלות">
+              <Gift size={18} aria-hidden="true" />
+            </Link>
+          </Tip>
+        }
+      />
       <Alert>{error}</Alert>
-      {loading ? <p>טוען…</p> : null}
-
-      <section className="card">
-        <div className="spread">
-          <h2>משימות פתוחות</h2>
-          <Link href="/tasks">לכל המשימות</Link>
-        </div>
-        {!loading && tasks?.length === 0 ? <Empty title="אין משימות פתוחות" hint="אפשר להוסיף משימת בית ידנית." /> : null}
-        <ul className="stack">
-          {(tasks ?? []).map((task) => (
-            <li key={task.id}>
-              {task.title}
-              {task.due_date ? <span className="meta"> · {task.due_date}</span> : null}
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section className="card">
-        <div className="spread">
-          <h2>קניות שלא נלקחו</h2>
-          <Link href="/shop">לקניות</Link>
-        </div>
-        {!loading && openLists.length === 0 ? <Empty title="אין פריטים שמחכים" /> : null}
-        {openLists.map((list) => (
-          <div key={list.id}>
-            <strong>{list.name}</strong>
-            <ul>
-              {list.pending.map((item) => (
-                <li key={item.id}>{item.name}</li>
-              ))}
-            </ul>
+      <div className="bento">
+        <section className="card panel panel-tasks">
+          <div className="spread">
+            <h2>משימות פתוחות</h2>
+            <Link href="/tasks">{openCount}</Link>
           </div>
-        ))}
-      </section>
+          {loading ? <Skeleton rows={4} /> : null}
+          {!loading && visibleTasks.length === 0 ? (
+            <Empty title="אין משימות פתוחות" action={<Link className="btn btn-primary" href="/tasks">הוספת משימה</Link>} />
+          ) : null}
+          <ul className="stack">
+            {visibleTasks.map((task) => (
+              <TaskLine key={task.id} task={task} />
+            ))}
+          </ul>
+        </section>
 
-      <section className="card">
-        <div className="spread">
-          <h2>חוגים היום</h2>
-          <Link href="/classes">ללוח החוגים</Link>
-        </div>
-        {!loading && classes?.length === 0 ? <Empty title="אין חוגים היום" /> : null}
-        <ul className="stack">
-          {(classes ?? []).map((row) => (
-            <li key={row.id}>
-              {row.starts_at.slice(0, 5)} · {row.name}
-              {personName(row.person_id) ? ` · ${personName(row.person_id)}` : ""}
-              {row.place ? ` · ${row.place}` : ""}
-            </li>
+        <section className="card panel panel-shop">
+          <div className="spread">
+            <h2>לקנות</h2>
+            <Link href="/shop">{pendingCount}</Link>
+          </div>
+          {loading ? <Skeleton rows={3} /> : null}
+          {!loading && visibleShop.length === 0 ? (
+            <Empty title="הרשימה ריקה" action={<Link className="btn btn-quiet" href="/shop">לקניות</Link>} />
+          ) : null}
+          {visibleShop.map((list) => (
+            <div key={list.id}>
+              <p className="meta">{list.name}</p>
+              <ul className="stack">
+                {list.items.map((item) => (
+                  <li key={item.id} className="row-line">
+                    <IconButton label={`סמן את ${item.name} כנקנה`} onClick={() => toggleBought(item)}>
+                      <Circle size={18} aria-hidden="true" />
+                    </IconButton>
+                    <div className="row-open shop-pair">
+                      <span className="shop-amount">{formatAmount(item) || "–"}</span>
+                      <span>{item.name}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
           ))}
-        </ul>
-      </section>
+        </section>
 
-      <section className="card">
-        <div className="spread">
-          <h2>אירועים קרובים</h2>
-          <Link href="/events">לאירועים</Link>
-        </div>
-        {!loading && events?.length === 0 ? <Empty title="אין אירועים קרובים" /> : null}
-        <ul className="stack">
-          {(events ?? []).map((event) => (
-            <li key={event.id}>
-              {event.event_date}
-              {event.event_time ? ` ${event.event_time.slice(0, 5)}` : ""} · {event.title}
-            </li>
-          ))}
-        </ul>
-      </section>
+        <section className="card panel">
+          <div className="spread">
+            <h2>חוגים היום</h2>
+            <Link href="/classes">הכל</Link>
+          </div>
+          {loading ? <Skeleton rows={2} /> : null}
+          {!loading && classes?.length === 0 ? <Empty title="אין חוגים היום" /> : null}
+          <ul className="stack">
+            {(classes ?? []).map((row) => (
+              <li key={row.id} className="spread">
+                <span><strong>{row.starts_at.slice(0, 5)}</strong> {row.name}</span>
+                <PersonLink id={row.person_id} name={personName(row.person_id)} />
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section className="card panel">
+          <div className="spread">
+            <h2>אירועים</h2>
+            <Link href="/events">הכל</Link>
+          </div>
+          {loading ? <Skeleton rows={2} /> : null}
+          {!loading && events?.length === 0 ? <Empty title="אין אירועים קרובים" /> : null}
+          <ul className="stack">
+            {(events ?? []).slice(0, 4).map((event) => (
+              <li key={event.id} className="spread">
+                <span>{event.title}</span>
+                <span className="meta">{event.event_date.slice(5)}{event.event_time ? ` ${event.event_time.slice(0, 5)}` : ""}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </div>
     </>
   );
 }

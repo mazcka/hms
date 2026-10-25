@@ -1,4 +1,44 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
+
+export function PageHead({
+  title,
+  lede,
+  action,
+}: {
+  title: string;
+  lede?: string;
+  action?: ReactNode;
+}) {
+  return (
+    <header className="page-head">
+      <div>
+        <h1>{title}</h1>
+        {lede ? <p className="lede">{lede}</p> : null}
+      </div>
+      {action}
+    </header>
+  );
+}
+
+export function Skeleton({ rows = 3 }: { rows?: number }) {
+  return (
+    <div className="skeleton" aria-busy="true" aria-label="טוען">
+      {Array.from({ length: rows }, (_, index) => (
+        <span key={index} />
+      ))}
+    </div>
+  );
+}
+
+export function PersonLink({ id, name }: { id: string; name: string }) {
+  if (!name) return null;
+  return (
+    <Link className="chip chip-person" href={`/people/${id}`}>
+      {name}
+    </Link>
+  );
+}
 
 export function Alert({ children }: { children: string }) {
   if (!children) return null;
@@ -9,15 +49,12 @@ export function Alert({ children }: { children: string }) {
   );
 }
 
-export function Empty({ title, hint }: { title: string; hint?: string }) {
+export function Empty({ title, hint, action }: { title: string; hint?: string; action?: ReactNode }) {
   return (
     <div className="empty">
-      <svg width="48" height="48" viewBox="0 0 48 48" aria-hidden="true">
-        <rect x="8" y="18" width="32" height="20" rx="3" fill="none" stroke="currentColor" strokeWidth="2" />
-        <path d="M8 24 L24 12 L40 24" fill="none" stroke="currentColor" strokeWidth="2" />
-      </svg>
-      <p>{title}</p>
-      {hint ? <p>{hint}</p> : null}
+      <p className="empty-title">{title}</p>
+      {hint ? <p className="meta">{hint}</p> : null}
+      {action}
     </div>
   );
 }

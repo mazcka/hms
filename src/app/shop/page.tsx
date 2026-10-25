@@ -1,8 +1,13 @@
 "use client";
 
+import { Check, Circle, Plus, X } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useHousehold } from "@/components/auth-provider";
-import { Alert, Empty } from "@/components/ui";
+import { IconButton, MenuItem, RowMenu } from "@/components/menu";
+import { Sheet } from "@/components/sheet";
+import { Alert, Empty, PageHead, Skeleton } from "@/components/ui";
+import { notifyRefresh } from "@/lib/task";
+import { formatParsedAmount, parseShoppingText } from "@/lib/shop-list";
 
 type Item = {
   id: string;
@@ -13,18 +18,22 @@ type Item = {
   one_off: boolean;
 };
 type List = { id: string; name: string; hms_shop_items: Item[] };
+function formatAmount(item: Item) {
+  if (item.quantity != null && item.unit) return `${item.quantity} ${item.unit}`;
+  if (item.quantity != null) return String(item.quantity);
+  return item.unit ?? "";
+}
 
 export default function ShopPage() {
   const gate = useHousehold();
   const [lists, setLists] = useState<List[] | null>(null);
   const [listName, setListName] = useState("");
-  const [itemName, setItemName] = useState("");
-  const [quantity, setQuantity] = useState("");
-  const [unit, setUnit] = useState("");
-  const [oneOff, setOneOff] = useState(false);
+  const [draft, setDraft] = useState("");
   const [listId, setListId] = useState("");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
+  const [addingList, setAddingList] = useState(false);
+  const [addingItems, setAddingItems] = useState(false);
 
   async function load() {
     if (!gate) return;
@@ -41,6 +50,11 @@ export default function ShopPage() {
 
   useEffect(() => {
     load();
+    function onRefresh() {
+      load();
+    }
+    window.addEventListener("hms-refresh", onRefresh);
+    return () => window.removeEventListener("hms-refresh", onRefresh);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gate]);
 
@@ -55,42 +69,47 @@ export default function ShopPage() {
     }
     setPending(true);
     setError("");
-    const { error: writeError } = await gate.supabase.from("hms_shop_lists").insert({
-      household_id: gate.member.household_id,
-      name: listName.trim(),
-    });
+    const created = await gate.supabase
+      .from("hms_shop_lists")
+      .insert({ household_id: gate.member.household_id, name: listName.trim() })
+      .select("id")
+      .single();
     setPending(false);
-    if (writeError) setError(writeError.message);
+    if (created.error) setError(created.error.message);
     else {
+      const id = (created.data as { id: string } | null)?.id;
+      if (id) setListId(id);
       setListName("");
+      setAddingList(false);
       await load();
     }
   }
 
-  async function addItem(event: FormEvent) {
-    event.preventDefault();
+  async function addItem(event?: FormEvent) {
+    event?.preventDefault();
     if (!gate) return;
-    if (!listId || !itemName.trim()) {
-      setError("בחרו קטגוריה ושם פריט.");
+    const rows = parseShoppingText(draft);
+    if (!listId || rows.length === 0) {
+      setError("בחרו קטגוריה וכתבו לפחות פריט אחד.");
       return;
     }
     setPending(true);
     setError("");
-    const { error: writeError } = await gate.supabase.from("hms_shop_items").insert({
-      household_id: gate.member.household_id,
-      list_id: listId,
-      name: itemName.trim(),
-      quantity: quantity ? Number(quantity) : null,
-      unit: unit.trim() || null,
-      one_off: oneOff,
-    });
+    const { error: writeError } = await gate.supabase.from("hms_shop_items").insert(
+      rows.map((row) => ({
+        household_id: gate.member.household_id,
+        list_id: listId,
+        name: row.name,
+        quantity: row.quantity,
+        unit: row.unit,
+        one_off: false,
+      })),
+    );
     setPending(false);
     if (writeError) setError(writeError.message);
     else {
-      setItemName("");
-      setQuantity("");
-      setUnit("");
-      setOneOff(false);
+      setDraft("");
+      setAddingItems(false);
       await load();
     }
   }
@@ -104,15 +123,18 @@ export default function ShopPage() {
 
   async function endSession(id: string) {
     if (!gate) return;
-    setError("");
-    const deleted = await gate.supabase.from("hms_shop_items").delete().eq("list_id", id).eq("one_off", true);
-    if (deleted.error) {
-      setError(deleted.error.message);
+    const marked = (lists ?? []).find((list) => list.id === id)?.hms_shop_items.filter((item) => item.bought) ?? [];
+    if (marked.length === 0) {
+      setError("אין פריטים מסומנים. סמנו מה שקניתם, ואז סיימו את הסשן.");
       return;
     }
-    const cleared = await gate.supabase.from("hms_shop_items").update({ bought: false }).eq("list_id", id);
-    if (cleared.error) setError(cleared.error.message);
-    else await load();
+    setError("");
+    const deleted = await gate.supabase.from("hms_shop_items").delete().eq("list_id", id).eq("bought", true);
+    if (deleted.error) setError(deleted.error.message);
+    else {
+      notifyRefresh();
+      await load();
+    }
   }
 
   async function removeList(id: string) {
@@ -123,73 +145,101 @@ export default function ShopPage() {
     else await load();
   }
 
+  const preview = parseShoppingText(draft);
+
   return (
     <>
-      <h1>קניות</h1>
-      <p className="lede">קטגוריית-על קבועה, ומתחתיה פריטים. סיום סשן מאפס סימונים ומוחק חד-פעמיים.</p>
+      <PageHead title="קניות" action={<button className="btn btn-primary" type="button" onClick={() => setAddingItems(true)}>פריטים</button>} />
       <Alert>{error}</Alert>
-      <form className="card stack" onSubmit={addList}>
-        <h2>קטגוריה חדשה</h2>
+      <Sheet open={addingItems} title="פריטים חדשים" onClose={() => setAddingItems(false)}>
+      <form className="stack" onSubmit={addItem}>
+        <div className="category-pick">
+          <label>
+            קטגוריה
+            <select value={listId} onChange={(e) => setListId(e.target.value)}>
+              <option value="">בחירה</option>
+              {(lists ?? []).map((list) => (
+                <option key={list.id} value={list.id}>{list.name}</option>
+              ))}
+            </select>
+          </label>
+          <IconButton label="קטגוריה חדשה" onClick={() => { setError(""); setAddingList(true); }}>
+            <Plus size={18} aria-hidden="true" />
+          </IconButton>
+        </div>
         <label>
-          שם
-          <input value={listName} onChange={(e) => setListName(e.target.value)} placeholder="סופר, טמבוריה…" />
+          פריטים
+          <textarea
+            value={draft}
+            rows={6}
+            placeholder={"חלב\nביצים\n5 פיתות\n8 מלפפונים"}
+            onChange={(e) => setDraft(e.target.value)}
+          />
         </label>
-        <button className="btn btn-primary" disabled={pending} type="submit">הוספת קטגוריה</button>
-      </form>
-      <form className="card stack" onSubmit={addItem}>
-        <h2>פריט</h2>
-        <label>
-          קטגוריה
-          <select value={listId} onChange={(e) => setListId(e.target.value)}>
-            <option value="">בחירה</option>
-            {(lists ?? []).map((list) => (
-              <option key={list.id} value={list.id}>{list.name}</option>
+        {preview.length > 0 ? (
+          <ul className="shop-preview" aria-label="פריטים שייתווספו">
+            {preview.map((row, index) => (
+              <li key={`${row.name}-${index}`}>
+                <span className="shop-amount">{formatParsedAmount(row)}</span>
+                <span>{row.name}</span>
+              </li>
             ))}
-          </select>
-        </label>
-        <label>
-          שם הפריט
-          <input value={itemName} onChange={(e) => setItemName(e.target.value)} />
-        </label>
-        <label>
-          כמות
-          <input inputMode="decimal" value={quantity} onChange={(e) => setQuantity(e.target.value)} />
-        </label>
-        <label>
-          יחידה
-          <input value={unit} onChange={(e) => setUnit(e.target.value)} />
-        </label>
-        <label className="check">
-          <input type="checkbox" checked={oneOff} onChange={(e) => setOneOff(e.target.checked)} />
-          חד-פעמי, יימחק בסיום הסשן
-        </label>
-        <button className="btn btn-primary" disabled={pending} type="submit">הוספת פריט</button>
+          </ul>
+        ) : null}
+        <button className="btn btn-primary" disabled={pending} type="submit">הוספת פריטים</button>
       </form>
-      {!lists ? <p>טוען…</p> : null}
-      {lists && lists.length === 0 ? <Empty title="אין עדיין קטגוריות קניות" hint="התחילו מסופר, טמבוריה או בית מרקחת." /> : null}
+      </Sheet>
+      {addingList ? (
+        <div className="modal-back" role="presentation" onClick={() => setAddingList(false)}>
+          <form className="modal" role="dialog" aria-modal="true" aria-label="קטגוריה חדשה" onClick={(e) => e.stopPropagation()} onSubmit={addList}>
+            <header className="modal-head">
+              <p className="eyebrow">קטגוריה חדשה</p>
+              <IconButton label="סגירה" onClick={() => setAddingList(false)}>
+                <X size={18} aria-hidden="true" />
+              </IconButton>
+            </header>
+            <label>
+              שם
+              <input value={listName} onChange={(e) => setListName(e.target.value)} placeholder="סופר, טמבוריה…" autoFocus />
+            </label>
+            <footer className="modal-foot">
+              <button className="btn btn-primary" disabled={pending} type="submit">הוספת קטגוריה</button>
+            </footer>
+          </form>
+        </div>
+      ) : null}
+      {!lists ? <Skeleton rows={3} /> : null}
+      {lists && lists.length === 0 ? <Empty title="אין קטגוריות" hint="הוסיפו קטגוריה ואז פריטים." action={<button className="btn btn-primary" type="button" onClick={() => setAddingList(true)}>קטגוריה חדשה</button>} /> : null}
       {lists?.map((list) => (
-        <section className="card" key={list.id}>
+        <section className="card tone tone-shop" key={list.id}>
           <div className="spread">
             <h2>{list.name}</h2>
-            <button className="btn btn-danger" type="button" onClick={() => removeList(list.id)}>מחיקת קטגוריה</button>
+            <RowMenu label={`פעולות ${list.name}`}>
+              <MenuItem onSelect={() => endSession(list.id)}>סיום סשן</MenuItem>
+              <MenuItem danger onSelect={() => removeList(list.id)}>מחיקת קטגוריה</MenuItem>
+            </RowMenu>
           </div>
           {(list.hms_shop_items ?? []).length === 0 ? <Empty title="אין פריטים בקטגוריה" /> : null}
           <ul className="stack">
             {(list.hms_shop_items ?? []).map((item) => (
-              <li key={item.id} className="spread">
-                <button className="btn btn-quiet" type="button" onClick={() => toggle(item)} aria-pressed={item.bought}>
+              <li key={item.id} className="row-line">
+                <IconButton
+                  label={item.bought ? `בטל סימון של ${item.name}` : `סמן את ${item.name} כנקנה`}
+                  aria-pressed={item.bought}
+                  onClick={() => toggle(item)}
+                >
+                  {item.bought ? <Check size={18} aria-hidden="true" /> : <Circle size={18} aria-hidden="true" />}
+                </IconButton>
+                <div className="row-open shop-pair">
+                  <span className="shop-amount">{formatAmount(item) || "–"}</span>
                   <span className={item.bought ? "bought" : undefined}>
                     {item.name}
-                    {item.quantity ? ` · ${item.quantity}` : ""}
-                    {item.unit ? ` ${item.unit}` : ""}
-                    {item.one_off ? " · חד-פעמי" : ""}
+                    {item.one_off ? <span className="meta"> חד-פעמי</span> : null}
                   </span>
-                </button>
-                <span className="meta">{item.bought ? "נקנה" : "לא נקנה"}</span>
+                </div>
               </li>
             ))}
           </ul>
-          <button className="btn btn-secondary" type="button" onClick={() => endSession(list.id)}>סיום סשן</button>
         </section>
       ))}
     </>

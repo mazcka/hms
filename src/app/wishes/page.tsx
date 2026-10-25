@@ -2,12 +2,17 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useHousehold } from "@/components/auth-provider";
-import { Alert, Empty } from "@/components/ui";
+import { MenuItem, RowMenu } from "@/components/menu";
+import { Sheet } from "@/components/sheet";
+import { Alert, Empty, PageHead, PersonLink, Skeleton } from "@/components/ui";
+import { notifyRefresh } from "@/lib/task";
 import { WISH_STATUS } from "@/lib/labels";
 
+type Person = { id: string; name: string };
 type Wish = {
   id: string;
   title: string;
+  for_person_id: string | null;
   for_label: string | null;
   url: string | null;
   notes: string | null;
@@ -15,23 +20,25 @@ type Wish = {
   status: keyof typeof WISH_STATUS;
 };
 
-const blank = { title: "", for_label: "", url: "", notes: "", priority: "0", status: "idea" as Wish["status"] };
+const blank = { title: "", for_person_id: "", for_label: "", url: "", notes: "", priority: "0", status: "idea" as Wish["status"] };
 
 export default function WishesPage() {
   const gate = useHousehold();
+  const [people, setPeople] = useState<Person[]>([]);
   const [rows, setRows] = useState<Wish[] | null>(null);
   const [form, setForm] = useState(blank);
+  const [composer, setComposer] = useState(false);
   const [error, setError] = useState("");
 
   async function load() {
     if (!gate) return;
-    const { data, error: queryError } = await gate.supabase
-      .from("hms_wishes")
-      .select("id, title, for_label, url, notes, priority, status")
-      .eq("household_id", gate.member.household_id)
-      .order("priority", { ascending: false });
-    if (queryError) setError(queryError.message);
-    setRows((data ?? []) as Wish[]);
+    const [w, p] = await Promise.all([
+      gate.supabase.from("hms_wishes").select("id, title, for_person_id, for_label, url, notes, priority, status").eq("household_id", gate.member.household_id).order("priority", { ascending: false }),
+      gate.supabase.from("hms_people").select("id, name").eq("household_id", gate.member.household_id).order("name"),
+    ]);
+    if (w.error || p.error) setError(w.error?.message || p.error?.message || "");
+    setRows((w.data ?? []) as Wish[]);
+    setPeople((p.data ?? []) as Person[]);
   }
 
   useEffect(() => {
@@ -51,6 +58,7 @@ export default function WishesPage() {
     const { error: writeError } = await gate.supabase.from("hms_wishes").insert({
       household_id: gate.member.household_id,
       title: form.title.trim(),
+      for_person_id: form.for_person_id || null,
       for_label: form.for_label.trim() || null,
       url: form.url.trim() || null,
       notes: form.notes.trim() || null,
@@ -61,6 +69,7 @@ export default function WishesPage() {
     if (writeError) setError(writeError.message);
     else {
       setForm(blank);
+      setComposer(false);
       await load();
     }
   }
@@ -70,6 +79,47 @@ export default function WishesPage() {
     const { error: writeError } = await gate.supabase.from("hms_wishes").update({ status }).eq("id", row.id);
     if (writeError) setError(writeError.message);
     else await load();
+  }
+
+  async function toShop(row: Wish) {
+    if (!gate) return;
+    setError("");
+    const lists = await gate.supabase
+      .from("hms_shop_lists")
+      .select("id")
+      .eq("household_id", gate.member.household_id)
+      .order("name")
+      .limit(1);
+    if (lists.error) {
+      setError(lists.error.message);
+      return;
+    }
+    let listId = (lists.data?.[0] as { id: string } | undefined)?.id;
+    if (!listId) {
+      const created = await gate.supabase
+        .from("hms_shop_lists")
+        .insert({ household_id: gate.member.household_id, name: "קניות" })
+        .select("id")
+        .single();
+      if (created.error) {
+        setError(created.error.message);
+        return;
+      }
+      listId = (created.data as { id: string }).id;
+    }
+    const { error: writeError } = await gate.supabase.from("hms_shop_items").insert({
+      household_id: gate.member.household_id,
+      list_id: listId,
+      name: row.title,
+      one_off: true,
+    });
+    if (writeError) {
+      setError(writeError.message);
+      return;
+    }
+    await gate.supabase.from("hms_wishes").update({ status: "bought" }).eq("id", row.id);
+    notifyRefresh();
+    await load();
   }
 
   async function remove(id: string) {
@@ -82,53 +132,70 @@ export default function WishesPage() {
 
   return (
     <>
-      <h1>משאלות</h1>
-      <p className="lede">רעיון, החלטה לקנות, או שכבר נקנה.</p>
+      <PageHead title="משאלות" action={<button className="btn btn-primary" type="button" onClick={() => setComposer(true)}>משאלה חדשה</button>} />
       <Alert>{error}</Alert>
-      <form className="card stack" onSubmit={save}>
+      <Sheet open={composer} title="משאלה חדשה" onClose={() => setComposer(false)}>
+      <form className="stack" onSubmit={save}>
         <label>
           כותרת
           <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
         </label>
-        <label>
-          עבור מי
-          <input value={form.for_label} onChange={(e) => setForm({ ...form, for_label: e.target.value })} />
-        </label>
-        <label>
-          קישור
-          <input type="url" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} />
-        </label>
-        <label>
-          עדיפות
-          <input inputMode="numeric" value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })} />
-        </label>
-        <label>
-          הערות
-          <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-        </label>
+        <details>
+          <summary>עוד פרטים</summary>
+          <div className="stack">
+            <label>
+              עבור
+              <select value={form.for_person_id} onChange={(e) => setForm({ ...form, for_person_id: e.target.value })}>
+                <option value="">בלי שיוך</option>
+                {people.map((person) => (
+                  <option key={person.id} value={person.id}>{person.name}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              קישור
+              <input type="url" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} />
+            </label>
+            <label>
+              עדיפות
+              <input inputMode="numeric" value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })} />
+            </label>
+            <label>
+              הערות
+              <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+            </label>
+          </div>
+        </details>
         <button className="btn btn-primary" type="submit">הוספה</button>
       </form>
-      {!rows ? <p>טוען…</p> : null}
-      {rows && rows.length === 0 ? <Empty title="רשימת המשאלות ריקה" /> : null}
-      {rows?.map((row) => (
-        <article className="card" key={row.id}>
-          <div className="spread">
-            <h2>{row.title}</h2>
-            <span className="meta">עדיפות {row.priority}</span>
-          </div>
-          <p className="meta">{row.for_label || "בלי שם"} · {WISH_STATUS[row.status]}</p>
-          {row.notes ? <p>{row.notes}</p> : null}
-          {row.url ? <p><a href={row.url}>קישור</a></p> : null}
-          <div className="row">
-            {(Object.keys(WISH_STATUS) as Wish["status"][]).map((status) => (
-              <button key={status} className="btn btn-quiet" type="button" aria-pressed={row.status === status} onClick={() => setStatus(row, status)}>
-                {WISH_STATUS[status]}
-              </button>
+      </Sheet>
+      {!rows ? <Skeleton rows={3} /> : null}
+      {rows && rows.length === 0 ? <Empty title="אין משאלות" action={<button className="btn btn-primary" type="button" onClick={() => setComposer(true)}>משאלה חדשה</button>} /> : null}
+      {rows && rows.length > 0 ? (
+        <section className="card">
+          <ul className="stack">
+            {rows.map((row) => (
+              <li key={row.id} className="row-line">
+                <div className="row-open">
+                  <span>{row.title}</span>
+                  <span className="meta">
+                    {WISH_STATUS[row.status]}
+                    {row.for_person_id ? <PersonLink id={row.for_person_id} name={people.find((p) => p.id === row.for_person_id)?.name ?? ""} /> : null}
+                    {row.url ? <a href={row.url}>קישור</a> : null}
+                  </span>
+                </div>
+                <RowMenu>
+                  {(Object.keys(WISH_STATUS) as Wish["status"][]).map((status) => (
+                    <MenuItem key={status} onSelect={() => setStatus(row, status)}>{WISH_STATUS[status]}</MenuItem>
+                  ))}
+                  {row.status === "planned" ? <MenuItem onSelect={() => toShop(row)}>לקניות</MenuItem> : null}
+                  <MenuItem danger onSelect={() => remove(row.id)}>מחיקה</MenuItem>
+                </RowMenu>
+              </li>
             ))}
-            <button className="btn btn-danger" type="button" onClick={() => remove(row.id)}>מחיקה</button>
-          </div>
-        </article>
-      ))}
+          </ul>
+        </section>
+      ) : null}
     </>
   );
 }

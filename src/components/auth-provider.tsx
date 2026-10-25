@@ -11,6 +11,9 @@ import {
   type ReactNode,
 } from "react";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
+import { Tip } from "@/components/menu";
+import { QuickAdd } from "@/components/quick-add";
+import { TaskEditorProvider } from "@/components/task-editor";
 import { getSupabase } from "@/lib/supabase";
 
 export type Member = {
@@ -35,12 +38,35 @@ export function useHousehold() {
 }
 
 const NAV = [
-  { href: "/", label: "השבוע" },
-  { href: "/tasks", label: "משימות" },
-  { href: "/shop", label: "קניות" },
-  { href: "/plan", label: "לוח" },
-  { href: "/voice", label: "קול" },
-];
+  { href: "/", label: "השבוע", icon: "home" },
+  { href: "/tasks", label: "משימות", icon: "check" },
+  { href: "/shop", label: "קניות", icon: "bag" },
+] as const;
+
+function NavIcon({ name }: { name: (typeof NAV)[number]["icon"] }) {
+  const common = { fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  if (name === "home") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path {...common} d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1z" />
+      </svg>
+    );
+  }
+  if (name === "check") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect {...common} x="4" y="4" width="16" height="16" rx="3" />
+        <path {...common} d="m8 12 2.5 2.5L16 9" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path {...common} d="M6 8h12l-1 12H7L6 8z" />
+      <path {...common} d="M9 8V7a3 3 0 0 1 6 0v1" />
+    </svg>
+  );
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -121,26 +147,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           <NeedsHousehold userId={session.user.id} error={error} />
         ) : null}
         {error && member ? <p className="alert" role="alert">{error}</p> : null}
-        {supabase && ready && (pathname === "/login" || gate) ? children : null}
+        {supabase && ready && (pathname === "/login" || gate) ? (
+          <TaskEditorProvider>
+            {showNav && pathname !== "/" ? (
+              <Tip label="השבוע">
+                <Link className="home-back" href="/" aria-label="השבוע">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20">
+                    <path fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1z" />
+                  </svg>
+                </Link>
+              </Tip>
+            ) : null}
+            {children}
+          </TaskEditorProvider>
+        ) : null}
       </div>
+      {showNav ? <QuickAdd /> : null}
       {showNav ? (
         <nav className="nav" aria-label="ראשי">
           {NAV.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={
-                item.href === "/plan"
-                  ? ["/plan", "/classes", "/events", "/wishes"].includes(pathname)
-                    ? "page"
-                    : undefined
-                  : pathname === item.href
-                    ? "page"
-                    : undefined
-              }
-            >
-              {item.label}
-            </Link>
+            <Tip key={item.href} label={item.label}>
+              <Link
+                href={item.href}
+                aria-label={item.label}
+                aria-current={pathname === item.href ? "page" : undefined}
+              >
+                <NavIcon name={item.icon} />
+              </Link>
+            </Tip>
           ))}
         </nav>
       ) : null}
