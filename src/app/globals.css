@@ -294,7 +294,7 @@ textarea { min-height: 5.5rem; resize: vertical; }
   border: 1px solid rgba(255, 250, 244, 0.08);
   border-radius: 28px;
   padding: 0.35rem;
-  z-index: 20;
+  z-index: 22;
   box-shadow: 0 16px 40px rgba(36, 25, 16, 0.28);
   backdrop-filter: blur(16px);
 }
@@ -434,7 +434,7 @@ ul.stack { list-style: none; margin: 0; padding: 0; }
   position: fixed;
   z-index: 21;
   inset-inline-end: max(1rem, calc(50% - 18rem));
-  bottom: calc(var(--nav-h) + 0.35rem + env(safe-area-inset-bottom));
+  bottom: calc(var(--nav-h) + 0.85rem + env(safe-area-inset-bottom));
   width: 52px;
   height: 52px;
   border: 0;
