@@ -557,6 +557,9 @@ ul.stack { list-style: none; margin: 0; padding: 0; }
 .chip {
   display: inline-flex;
   align-items: center;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
   min-height: 32px;
   padding: 0.15rem 0.7rem;
   border-radius: 999px;
@@ -597,6 +600,7 @@ ul.stack { list-style: none; margin: 0; padding: 0; }
 .tile-plan { background: #ede9fe; }
 .tile-voice { background: #fef3c7; }
 .tile-people { background: #fce7f3; }
+.tile-wishes { background: #fee2e2; }
 .add { margin-bottom: var(--space-md); }
 .add > summary {
   cursor: pointer;

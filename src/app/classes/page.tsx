@@ -24,7 +24,6 @@ export default function ClassesPage() {
   const gate = useHousehold();
   const [people, setPeople] = useState<Person[]>([]);
   const [rows, setRows] = useState<ClassRow[] | null>(null);
-  const [peopleOpen, setPeopleOpen] = useState(false);
   const [personName, setPersonName] = useState("");
   const [relation, setRelation] = useState<Person["relation"]>("daughter");
   const [form, setForm] = useState({ person_id: "", name: "", weekdays: [0] as number[], starts_at: "", ends_at: "", place: "" });
@@ -152,61 +151,62 @@ export default function ClassesPage() {
     <>
       <h1>חוגים</h1>
       <Alert>{error}</Alert>
+      <details className="add card">
+        <summary>אנשים</summary>
+        <div className="stack">
+          <ul className="stack">
+            {people.map((person) => (
+              <li key={person.id} className="spread">
+                <span>{person.name} · {RELATIONS[person.relation]}</span>
+                <button className="btn btn-danger" type="button" onClick={() => removePerson(person.id)}>מחיקה</button>
+              </li>
+            ))}
+          </ul>
+          <div className="row">
+            <input value={personName} onChange={(e) => setPersonName(e.target.value)} placeholder="שם" aria-label="שם" />
+            <select value={relation} aria-label="קשר" onChange={(e) => setRelation(e.target.value as Person["relation"])}>
+              {Object.entries(RELATIONS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+            <button className="btn btn-quiet" type="button" onClick={(event) => addPerson(event)}>הוספה</button>
+          </div>
+        </div>
+      </details>
       <details className="add card" open={formOpen} onToggle={(event) => setFormOpen(event.currentTarget.open)}>
       <summary>{editingId ? "עריכת חוג" : "חוג"}</summary>
       <form className="stack" onSubmit={addClass}>
-        <div className="spread">
-          <label>
-            עבור
-            <select value={form.person_id} onChange={(e) => setForm({ ...form, person_id: e.target.value })}>
-              <option value="">בחירה</option>
-              {people.map((person) => (
-                <option key={person.id} value={person.id}>{person.name}</option>
-              ))}
-            </select>
-          </label>
-          <button className="btn btn-quiet btn-mini" type="button" aria-expanded={peopleOpen} onClick={() => setPeopleOpen((open) => !open)}>
-            אנשים
-          </button>
-        </div>
-        {peopleOpen ? (
-          <div className="stack">
-            <ul className="stack">
-              {people.map((person) => (
-                <li key={person.id} className="spread">
-                  <span>{person.name} · {RELATIONS[person.relation]}</span>
-                  <button className="btn btn-danger" type="button" onClick={() => removePerson(person.id)}>מחיקה</button>
-                </li>
-              ))}
-            </ul>
-            <div className="row">
-              <input value={personName} onChange={(e) => setPersonName(e.target.value)} placeholder="שם" aria-label="שם" />
-              <select value={relation} aria-label="קשר" onChange={(e) => setRelation(e.target.value as Person["relation"])}>
-                {Object.entries(RELATIONS).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
-              <button className="btn btn-quiet" type="button" onClick={(event) => addPerson(event)}>הוספה</button>
-            </div>
-          </div>
-        ) : null}
         <label>
           שם החוג
-          <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+        </label>
+        <label>
+          עבור
+          <select value={form.person_id} onChange={(e) => setForm({ ...form, person_id: e.target.value })} required>
+            <option value="">בחירה</option>
+            {people.map((person) => (
+              <option key={person.id} value={person.id}>{person.name}</option>
+            ))}
+          </select>
         </label>
         <WeekdayPicker value={form.weekdays} onChange={(weekdays) => setForm({ ...form, weekdays })} />
         <label>
           התחלה
-          <input type="time" value={form.starts_at} onChange={(e) => setForm({ ...form, starts_at: e.target.value })} />
+          <input type="time" value={form.starts_at} onChange={(e) => setForm({ ...form, starts_at: e.target.value })} required />
         </label>
-        <label>
-          סיום
-          <input type="time" value={form.ends_at} onChange={(e) => setForm({ ...form, ends_at: e.target.value })} />
-        </label>
-        <label>
-          מקום
-          <PlaceField value={form.place} onChange={(place) => setForm({ ...form, place })} />
-        </label>
+        <details>
+          <summary>עוד פרטים</summary>
+          <div className="stack">
+            <label>
+              סיום
+              <input type="time" value={form.ends_at} onChange={(e) => setForm({ ...form, ends_at: e.target.value })} />
+            </label>
+            <label>
+              מקום
+              <PlaceField value={form.place} onChange={(place) => setForm({ ...form, place })} />
+            </label>
+          </div>
+        </details>
         <div className="row">
           <button className="btn btn-primary" type="submit">{editingId ? "שמירת שינוי" : "שמירת חוג"}</button>
           {editingId ? <button className="btn btn-quiet" type="button" onClick={cancelEdit}>ביטול</button> : null}

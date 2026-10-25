@@ -40,8 +40,6 @@ const NAV = [
   { href: "/", label: "השבוע", icon: "home" },
   { href: "/tasks", label: "משימות", icon: "check" },
   { href: "/shop", label: "קניות", icon: "bag" },
-  { href: "/plan", label: "לוח", icon: "cal" },
-  { href: "/voice", label: "קול", icon: "mic" },
 ] as const;
 
 function NavIcon({ name }: { name: (typeof NAV)[number]["icon"] }) {
@@ -61,26 +59,10 @@ function NavIcon({ name }: { name: (typeof NAV)[number]["icon"] }) {
       </svg>
     );
   }
-  if (name === "bag") {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path {...common} d="M6 8h12l-1 12H7L6 8z" />
-        <path {...common} d="M9 8V7a3 3 0 0 1 6 0v1" />
-      </svg>
-    );
-  }
-  if (name === "cal") {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <rect {...common} x="4" y="5" width="16" height="15" rx="2" />
-        <path {...common} d="M8 3.5v3M16 3.5v3M4 10h16" />
-      </svg>
-    );
-  }
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true">
-      <rect {...common} x="9" y="3" width="6" height="11" rx="3" />
-      <path {...common} d="M7 11a5 5 0 0 0 10 0M12 16v4" />
+      <path {...common} d="M6 8h12l-1 12H7L6 8z" />
+      <path {...common} d="M9 8V7a3 3 0 0 1 6 0v1" />
     </svg>
   );
 }
@@ -182,15 +164,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             <Link
               key={item.href}
               href={item.href}
-              aria-current={
-                item.href === "/plan"
-                  ? ["/plan", "/classes", "/events", "/wishes"].includes(pathname)
-                    ? "page"
-                    : undefined
-                  : pathname === item.href
-                    ? "page"
-                    : undefined
-              }
+              aria-current={pathname === item.href ? "page" : undefined}
             >
               <NavIcon name={item.icon} />
               {item.label}

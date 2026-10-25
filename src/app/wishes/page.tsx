@@ -2,8 +2,8 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useHousehold } from "@/components/auth-provider";
-import Link from "next/link";
 import { Alert, Empty, PersonLink } from "@/components/ui";
+import { notifyRefresh } from "@/lib/task";
 import { WISH_STATUS } from "@/lib/labels";
 
 type Person = { id: string; name: string };
@@ -77,6 +77,47 @@ export default function WishesPage() {
     else await load();
   }
 
+  async function toShop(row: Wish) {
+    if (!gate) return;
+    setError("");
+    const lists = await gate.supabase
+      .from("hms_shop_lists")
+      .select("id")
+      .eq("household_id", gate.member.household_id)
+      .order("name")
+      .limit(1);
+    if (lists.error) {
+      setError(lists.error.message);
+      return;
+    }
+    let listId = (lists.data?.[0] as { id: string } | undefined)?.id;
+    if (!listId) {
+      const created = await gate.supabase
+        .from("hms_shop_lists")
+        .insert({ household_id: gate.member.household_id, name: "קניות" })
+        .select("id")
+        .single();
+      if (created.error) {
+        setError(created.error.message);
+        return;
+      }
+      listId = (created.data as { id: string }).id;
+    }
+    const { error: writeError } = await gate.supabase.from("hms_shop_items").insert({
+      household_id: gate.member.household_id,
+      list_id: listId,
+      name: row.title,
+      one_off: true,
+    });
+    if (writeError) {
+      setError(writeError.message);
+      return;
+    }
+    await gate.supabase.from("hms_wishes").update({ status: "bought" }).eq("id", row.id);
+    notifyRefresh();
+    await load();
+  }
+
   async function remove(id: string) {
     if (!gate) return;
     if (!window.confirm("למחוק את המשאלה?")) return;
@@ -96,27 +137,32 @@ export default function WishesPage() {
           כותרת
           <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
         </label>
-        <label>
-          עבור
-          <select value={form.for_person_id} onChange={(e) => setForm({ ...form, for_person_id: e.target.value })}>
-            <option value="">בלי שיוך</option>
-            {people.map((person) => (
-              <option key={person.id} value={person.id}>{person.name}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          קישור
-          <input type="url" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} />
-        </label>
-        <label>
-          עדיפות
-          <input inputMode="numeric" value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })} />
-        </label>
-        <label>
-          הערות
-          <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-        </label>
+        <details>
+          <summary>עוד פרטים</summary>
+          <div className="stack">
+            <label>
+              עבור
+              <select value={form.for_person_id} onChange={(e) => setForm({ ...form, for_person_id: e.target.value })}>
+                <option value="">בלי שיוך</option>
+                {people.map((person) => (
+                  <option key={person.id} value={person.id}>{person.name}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              קישור
+              <input type="url" value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} />
+            </label>
+            <label>
+              עדיפות
+              <input inputMode="numeric" value={form.priority} onChange={(e) => setForm({ ...form, priority: e.target.value })} />
+            </label>
+            <label>
+              הערות
+              <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+            </label>
+          </div>
+        </details>
         <button className="btn btn-primary" type="submit">הוספה</button>
       </form>
       </details>
@@ -139,7 +185,9 @@ export default function WishesPage() {
                 {WISH_STATUS[status]}
               </button>
             ))}
-            {row.status === "planned" ? <Link className="chip chip-shop" href="/shop">לקניות</Link> : null}
+            {row.status === "planned" ? (
+              <button className="chip chip-shop" type="button" onClick={() => toShop(row)}>לקניות</button>
+            ) : null}
             <button className="btn btn-danger" type="button" onClick={() => remove(row.id)}>מחיקה</button>
           </div>
         </article>

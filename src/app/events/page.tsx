@@ -109,44 +109,49 @@ export default function EventsPage() {
           <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
         </label>
         <label>
-          סוג
-          <select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value as EventRow["kind"] })}>
-            {Object.entries(EVENT_KINDS).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-        </label>
-        <label>
           תאריך
           <input type="date" required value={form.event_date} onChange={(e) => setForm({ ...form, event_date: e.target.value })} />
         </label>
-        <label>
-          שעה
-          <input type="time" value={form.event_time} onChange={(e) => setForm({ ...form, event_time: e.target.value })} />
-        </label>
-        <label>
-          קשור ל
-          <select value={form.person_id} onChange={(e) => setForm({ ...form, person_id: e.target.value })}>
-            <option value="">בלי שיוך</option>
-            {people.map((person) => (
-              <option key={person.id} value={person.id}>{person.name}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          מקום
-          <PlaceField value={form.place} onChange={(place) => setForm({ ...form, place })} />
-        </label>
-        <label>
-          הערות
-          <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-        </label>
-        <label className="check">
-          <input type="checkbox" checked={form.remind_day_before} onChange={(e) => setForm({ ...form, remind_day_before: e.target.checked })} />
-          תזכורת יום לפני
-        </label>
+        <details>
+          <summary>עוד פרטים</summary>
+          <div className="stack">
+            <label>
+              סוג
+              <select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value as EventRow["kind"] })}>
+                {Object.entries(EVENT_KINDS).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              שעה
+              <input type="time" value={form.event_time} onChange={(e) => setForm({ ...form, event_time: e.target.value })} />
+            </label>
+            <label>
+              קשור ל
+              <select value={form.person_id} onChange={(e) => setForm({ ...form, person_id: e.target.value })}>
+                <option value="">בלי שיוך</option>
+                {people.map((person) => (
+                  <option key={person.id} value={person.id}>{person.name}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              מקום
+              <PlaceField value={form.place} onChange={(place) => setForm({ ...form, place })} />
+            </label>
+            <label>
+              הערות
+              <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+            </label>
+            <label className="check">
+              <input type="checkbox" checked={form.remind_day_before} onChange={(e) => setForm({ ...form, remind_day_before: e.target.checked })} />
+              תזכורת יום לפני
+            </label>
+            <button className="btn btn-quiet" type="button" onClick={enableReminders}>תזכורת</button>
+          </div>
+        </details>
         <button className="btn btn-primary" type="submit">שמירה</button>
-        <button className="btn btn-quiet" type="button" onClick={enableReminders}>תזכורת</button>
       </form>
       </details>
       {!rows ? <p>טוען…</p> : null}

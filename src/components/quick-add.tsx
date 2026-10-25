@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { useHousehold } from "@/components/auth-provider";
 import { PlaceField } from "@/components/place-field";
 import { WeekdayPicker } from "@/components/weekday-picker";
@@ -8,7 +9,7 @@ import { EVENT_KINDS } from "@/lib/labels";
 import { parseShoppingText } from "@/lib/shop-list";
 import { notifyRefresh, notifyTasksChanged } from "@/lib/task";
 
-type Kind = "task" | "shop" | "class" | "event";
+type Kind = "task" | "shop" | "class" | "event" | "wish";
 type Person = { id: string; name: string };
 type List = { id: string; name: string };
 
@@ -17,10 +18,12 @@ const KINDS: { id: Kind; label: string }[] = [
   { id: "shop", label: "קניות" },
   { id: "class", label: "חוג" },
   { id: "event", label: "אירוע" },
+  { id: "wish", label: "משאלה" },
 ];
 
 export function QuickAdd() {
   const gate = useHousehold();
+  const router = useRouter();
   const [menu, setMenu] = useState(false);
   const [kind, setKind] = useState<Kind | null>(null);
   const [title, setTitle] = useState("");
@@ -139,6 +142,15 @@ export function QuickAdd() {
       }
       if (!message) notifyRefresh();
     }
+    if (kind === "wish") {
+      const { error: writeError } = await current.supabase.from("hms_wishes").insert({
+        household_id: hid,
+        title: title.trim(),
+        created_by: current.member.id,
+      });
+      message = writeError?.message ?? "";
+      if (!message) notifyRefresh();
+    }
     if (kind === "event") {
       if (!extra) message = "חסר תאריך.";
       else {
@@ -167,6 +179,17 @@ export function QuickAdd() {
     <>
       {menu ? (
         <div className="quick-menu" role="menu" aria-label="יצירה מהירה">
+          <button
+            className="quick-choice"
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setMenu(false);
+              router.push("/voice");
+            }}
+          >
+            קול
+          </button>
           {KINDS.map((item) => (
             <button
               key={item.id}

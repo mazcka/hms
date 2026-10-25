@@ -123,8 +123,9 @@ export default function WeekPage() {
       <nav className="mosaic" aria-label="מודולים">
         <Link className="tile tile-tasks" href="/tasks"><span>פתוחות</span>{loading ? "–" : openCount} משימות</Link>
         <Link className="tile tile-shop" href="/shop"><span>מחכה</span>{pendingCount} פריטים</Link>
-        <Link className="tile tile-plan" href="/plan"><span>היום</span>{classes?.length ?? "–"} חוגים</Link>
-        <Link className="tile tile-voice" href="/voice"><span>דיבור</span>קול</Link>
+        <Link className="tile tile-plan" href="/classes"><span>היום</span>{classes?.length ?? "–"} חוגים</Link>
+        <Link className="tile tile-people" href="/events"><span>קרובים</span>{events?.length ?? "–"} אירועים</Link>
+        <Link className="tile tile-wishes" href="/wishes"><span>רשימה</span>משאלות</Link>
       </nav>
       <Alert>{error}</Alert>
       {loading ? <p>טוען…</p> : null}

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useHousehold } from "@/components/auth-provider";
@@ -51,12 +50,6 @@ export default function PersonPage() {
       <p className="eyebrow">{RELATIONS[person.relation]}</p>
       <h1>{person.name}</h1>
       <Alert>{error}</Alert>
-      <nav className="mosaic" aria-label="קשור">
-        <Link className="tile tile-plan" href="/classes">חוגים</Link>
-        <Link className="tile tile-people" href="/events">אירועים</Link>
-        <Link className="tile tile-tasks" href="/wishes">משאלות</Link>
-        <Link className="tile tile-shop" href="/shop">קניות</Link>
-      </nav>
       <section className="card tone tone-classes">
         <h2>חוגים</h2>
         {classes?.length === 0 ? <Empty title="אין חוגים" /> : null}
