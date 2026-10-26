@@ -1,9 +1,11 @@
 "use client";
 
+import { Check, ListPlus, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useHousehold } from "@/components/auth-provider";
 import { MenuItem, RowMenu } from "@/components/menu";
 import { Sheet } from "@/components/sheet";
+import { SwipeRow } from "@/components/swipe-row";
 import { Alert, Empty, PageHead, PersonLink, Skeleton } from "@/components/ui";
 import { notifyRefresh } from "@/lib/task";
 import { WISH_STATUS } from "@/lib/labels";
@@ -28,6 +30,7 @@ export default function WishesPage() {
   const [rows, setRows] = useState<Wish[] | null>(null);
   const [form, setForm] = useState(blank);
   const [composer, setComposer] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
   async function load() {
@@ -55,7 +58,7 @@ export default function WishesPage() {
       setError("חסרה כותרת.");
       return;
     }
-    const { error: writeError } = await gate.supabase.from("hms_wishes").insert({
+    const payload = {
       household_id: gate.member.household_id,
       title: form.title.trim(),
       for_person_id: form.for_person_id || null,
@@ -65,13 +68,42 @@ export default function WishesPage() {
       priority: Number(form.priority) || 0,
       status: form.status,
       created_by: gate.member.id,
-    });
+    };
+    const write = editingId
+      ? gate.supabase.from("hms_wishes").update(payload).eq("id", editingId)
+      : gate.supabase.from("hms_wishes").insert(payload);
+    const { error: writeError } = await write;
     if (writeError) setError(writeError.message);
     else {
       setForm(blank);
+      setEditingId(null);
       setComposer(false);
       await load();
     }
+  }
+
+  function startEdit(row: Wish) {
+    setForm({
+      title: row.title,
+      for_person_id: row.for_person_id ?? "",
+      for_label: row.for_label ?? "",
+      url: row.url ?? "",
+      notes: row.notes ?? "",
+      priority: String(row.priority),
+      status: row.status,
+    });
+    setEditingId(row.id);
+    setComposer(true);
+    setError("");
+  }
+
+  function advanceStatus(row: Wish) {
+    const next: Record<Wish["status"], Wish["status"]> = {
+      idea: "planned",
+      planned: "bought",
+      bought: "idea",
+    };
+    return setStatus(row, next[row.status]);
   }
 
   async function setStatus(row: Wish, status: Wish["status"]) {
@@ -134,7 +166,7 @@ export default function WishesPage() {
     <>
       <PageHead title="משאלות" action={<button className="btn btn-primary" type="button" onClick={() => setComposer(true)}>משאלה חדשה</button>} />
       <Alert>{error}</Alert>
-      <Sheet open={composer} title="משאלה חדשה" onClose={() => setComposer(false)}>
+      <Sheet open={composer} title={editingId ? "עריכת משאלה" : "משאלה חדשה"} onClose={() => { setComposer(false); setEditingId(null); setForm(blank); }}>
       <form className="stack" onSubmit={save}>
         <label>
           כותרת
@@ -166,7 +198,7 @@ export default function WishesPage() {
             </label>
           </div>
         </details>
-        <button className="btn btn-primary" type="submit">הוספה</button>
+        <button className="btn btn-primary" type="submit">{editingId ? "שמירת שינוי" : "הוספה"}</button>
       </form>
       </Sheet>
       {!rows ? <Skeleton rows={3} /> : null}
@@ -175,7 +207,19 @@ export default function WishesPage() {
         <section className="card">
           <ul className="stack">
             {rows.map((row) => (
-              <li key={row.id} className="row-line">
+              <SwipeRow
+                key={row.id}
+                startActions={row.status === "planned" ? [
+                  { label: "לקניות", icon: <ListPlus aria-hidden="true" />, onSelect: () => toShop(row) },
+                  { label: "הבא", icon: <Check aria-hidden="true" />, onSelect: () => advanceStatus(row), tone: "warning" },
+                ] : [
+                  { label: "הבא", icon: <Check aria-hidden="true" />, onSelect: () => advanceStatus(row) },
+                ]}
+                endActions={[
+                  { label: "עריכה", icon: <Pencil aria-hidden="true" />, onSelect: () => startEdit(row) },
+                  { label: "מחיקה", icon: <Trash2 aria-hidden="true" />, onSelect: () => remove(row.id), tone: "danger" },
+                ]}
+              >
                 <div className="row-open">
                   <span>{row.title}</span>
                   <span className="meta">
@@ -185,13 +229,14 @@ export default function WishesPage() {
                   </span>
                 </div>
                 <RowMenu>
+                  <MenuItem onSelect={() => startEdit(row)}>עריכה</MenuItem>
                   {(Object.keys(WISH_STATUS) as Wish["status"][]).map((status) => (
                     <MenuItem key={status} onSelect={() => setStatus(row, status)}>{WISH_STATUS[status]}</MenuItem>
                   ))}
                   {row.status === "planned" ? <MenuItem onSelect={() => toShop(row)}>לקניות</MenuItem> : null}
                   <MenuItem danger onSelect={() => remove(row.id)}>מחיקה</MenuItem>
                 </RowMenu>
-              </li>
+              </SwipeRow>
             ))}
           </ul>
         </section>
