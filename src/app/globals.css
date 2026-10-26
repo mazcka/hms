@@ -418,8 +418,8 @@ ul.stack { list-style: none; margin: 0; padding: 0; }
   inset-block: 0;
   display: flex;
 }
-.swipe-actions-start { inset-inline-start: 0; }
-.swipe-actions-end { inset-inline-end: 0; }
+.swipe-actions-start { left: 0; }
+.swipe-actions-end { right: 0; }
 .swipe-action {
   width: 76px;
   min-height: 52px;

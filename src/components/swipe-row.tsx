@@ -33,6 +33,7 @@ export function SwipeRow({
   const [dragging, setDragging] = useState(false);
   const origin = useRef({ x: 0, y: 0, offset: 0 });
   const horizontal = useRef<boolean | null>(null);
+  const moved = useRef(false);
 
   const startWidth = startActions.length * ACTION_WIDTH;
   const endWidth = endActions.length * ACTION_WIDTH;
@@ -41,6 +42,7 @@ export function SwipeRow({
     if (event.pointerType === "mouse" && event.button !== 0) return;
     origin.current = { x: event.clientX, y: event.clientY, offset };
     horizontal.current = null;
+    moved.current = false;
     setDragging(true);
     event.currentTarget.setPointerCapture(event.pointerId);
   }
@@ -54,6 +56,7 @@ export function SwipeRow({
     }
     if (!horizontal.current) return;
     event.preventDefault();
+    moved.current = true;
     const next = origin.current.offset + dx;
     setOffset(Math.max(-endWidth, Math.min(startWidth, next)));
   }
@@ -106,6 +109,12 @@ export function SwipeRow({
         onPointerUp={finish}
         onPointerCancel={finish}
         onLostPointerCapture={finish}
+        onClickCapture={(event) => {
+          if (!moved.current) return;
+          event.preventDefault();
+          event.stopPropagation();
+          moved.current = false;
+        }}
       >
         {children}
       </div>
