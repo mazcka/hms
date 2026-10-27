@@ -1,10 +1,11 @@
 "use client";
 
-import { Check, Circle, Plus, X } from "lucide-react";
+import { Check, Circle, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useHousehold } from "@/components/auth-provider";
 import { IconButton, MenuItem, RowMenu } from "@/components/menu";
 import { Sheet } from "@/components/sheet";
+import { SwipeRow } from "@/components/swipe-row";
 import { Alert, Empty, PageHead, Skeleton } from "@/components/ui";
 import { notifyRefresh } from "@/lib/task";
 import { formatParsedAmount, parseShoppingText } from "@/lib/shop-list";
@@ -121,6 +122,13 @@ export default function ShopPage() {
     else await load();
   }
 
+  async function removeItem(item: Item) {
+    if (!gate || !window.confirm(`למחוק את "${item.name}" מהרשימה?`)) return;
+    const { error: writeError } = await gate.supabase.from("hms_shop_items").delete().eq("id", item.id);
+    if (writeError) setError(writeError.message);
+    else await load();
+  }
+
   async function endSession(id: string) {
     if (!gate) return;
     const marked = (lists ?? []).find((list) => list.id === id)?.hms_shop_items.filter((item) => item.bought) ?? [];
@@ -222,7 +230,20 @@ export default function ShopPage() {
           {(list.hms_shop_items ?? []).length === 0 ? <Empty title="אין פריטים בקטגוריה" /> : null}
           <ul className="stack">
             {(list.hms_shop_items ?? []).map((item) => (
-              <li key={item.id} className="row-line">
+              <SwipeRow
+                key={item.id}
+                startActions={[{
+                  label: item.bought ? "להחזיר" : "נקנה",
+                  icon: item.bought ? <Circle aria-hidden="true" /> : <Check aria-hidden="true" />,
+                  onSelect: () => toggle(item),
+                }]}
+                endActions={[{
+                  label: "מחיקה",
+                  icon: <Trash2 aria-hidden="true" />,
+                  onSelect: () => removeItem(item),
+                  tone: "danger",
+                }]}
+              >
                 <IconButton
                   label={item.bought ? `בטל סימון של ${item.name}` : `סמן את ${item.name} כנקנה`}
                   aria-pressed={item.bought}
@@ -237,7 +258,7 @@ export default function ShopPage() {
                     {item.one_off ? <span className="meta"> חד-פעמי</span> : null}
                   </span>
                 </div>
-              </li>
+              </SwipeRow>
             ))}
           </ul>
         </section>

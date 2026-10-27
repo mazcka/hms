@@ -1,10 +1,12 @@
 "use client";
 
+import { Pause, Pencil, Play, Trash2 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useHousehold } from "@/components/auth-provider";
 import { PlaceField } from "@/components/place-field";
 import { MenuItem, RowMenu } from "@/components/menu";
 import { Sheet } from "@/components/sheet";
+import { SwipeRow } from "@/components/swipe-row";
 import { Alert, Empty, PageHead, PersonLink, Skeleton } from "@/components/ui";
 import { classDays, WeekdayPicker } from "@/components/weekday-picker";
 import { RELATIONS, WEEKDAYS } from "@/lib/labels";
@@ -162,7 +164,15 @@ export default function ClassesPage() {
         <div className="stack">
           <ul className="stack">
             {people.map((person) => (
-                <li key={person.id} className="row-line">
+                <SwipeRow
+                  key={person.id}
+                  endActions={[{
+                    label: "מחיקה",
+                    icon: <Trash2 aria-hidden="true" />,
+                    onSelect: () => removePerson(person.id),
+                    tone: "danger",
+                  }]}
+                >
                   <div className="row-open">
                     <span>{person.name}</span>
                     <span className="meta">{RELATIONS[person.relation]}</span>
@@ -170,7 +180,7 @@ export default function ClassesPage() {
                   <RowMenu label={`פעולות ${person.name}`}>
                     <MenuItem danger onSelect={() => removePerson(person.id)}>מחיקה</MenuItem>
                   </RowMenu>
-                </li>
+                </SwipeRow>
             ))}
           </ul>
           <div className="row">
@@ -233,7 +243,19 @@ export default function ClassesPage() {
             <h2>{day}</h2>
             <ul className="stack">
               {dayRows.map((row) => (
-                <li key={row.id} className="spread">
+                <SwipeRow
+                  key={row.id}
+                  startActions={[{
+                    label: row.active ? "השהיה" : "הפעלה",
+                    icon: row.active ? <Pause aria-hidden="true" /> : <Play aria-hidden="true" />,
+                    onSelect: () => toggle(row),
+                    tone: row.active ? "warning" : "primary",
+                  }]}
+                  endActions={[
+                    { label: "עריכה", icon: <Pencil aria-hidden="true" />, onSelect: () => startEdit(row) },
+                    { label: "מחיקה", icon: <Trash2 aria-hidden="true" />, onSelect: () => remove(row.id), tone: "danger" },
+                  ]}
+                >
                   <span>
                     {row.starts_at.slice(0, 5)}
                     {row.ends_at ? `–${row.ends_at.slice(0, 5)}` : ""} · {row.name}
@@ -246,7 +268,7 @@ export default function ClassesPage() {
                     <MenuItem onSelect={() => toggle(row)}>{row.active ? "השהיה" : "הפעלה"}</MenuItem>
                     <MenuItem danger onSelect={() => remove(row.id)}>מחיקה</MenuItem>
                   </RowMenu>
-                </li>
+                </SwipeRow>
               ))}
             </ul>
           </section>

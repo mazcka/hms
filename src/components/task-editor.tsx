@@ -17,6 +17,7 @@ import { notifyTasksChanged, type Task } from "@/lib/task";
 type Editor = {
   open: (task: Task) => void;
   setStatus: (task: Task, status: Task["status"]) => Promise<void>;
+  remove: (task: Task) => Promise<void>;
 };
 
 const EditorContext = createContext<Editor | null>(null);
@@ -67,6 +68,16 @@ export function TaskEditorProvider({ children }: { children: ReactNode }) {
       .from("hms_tasks")
       .update({ status: next, updated_at: new Date().toISOString() })
       .eq("id", current.id);
+    if (writeError) {
+      setError(writeError.message);
+      return;
+    }
+    notifyTasksChanged();
+  }
+
+  async function removeTask(current: Task) {
+    if (!gate || !window.confirm(`למחוק את המשימה "${current.title}"?`)) return;
+    const { error: writeError } = await gate.supabase.from("hms_tasks").delete().eq("id", current.id);
     if (writeError) {
       setError(writeError.message);
       return;
@@ -130,7 +141,7 @@ export function TaskEditorProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <EditorContext.Provider value={{ open, setStatus }}>
+    <EditorContext.Provider value={{ open, setStatus, remove: removeTask }}>
       {children}
       {task && gate ? (
         <div className="modal-back" role="presentation" onClick={() => setTask(null)}>

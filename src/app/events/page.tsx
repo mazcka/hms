@@ -1,10 +1,12 @@
 "use client";
 
+import { Pencil, Trash2 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useHousehold } from "@/components/auth-provider";
 import { PlaceField } from "@/components/place-field";
 import { MenuItem, RowMenu } from "@/components/menu";
 import { Sheet } from "@/components/sheet";
+import { SwipeRow } from "@/components/swipe-row";
 import { Alert, Empty, PageHead, PersonLink, Skeleton } from "@/components/ui";
 import { EVENT_KINDS } from "@/lib/labels";
 
@@ -29,6 +31,7 @@ export default function EventsPage() {
   const [rows, setRows] = useState<EventRow[] | null>(null);
   const [form, setForm] = useState(blank);
   const [composer, setComposer] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
@@ -63,7 +66,7 @@ export default function EventsPage() {
       return;
     }
     setError("");
-    const { error: writeError } = await gate.supabase.from("hms_events").insert({
+    const payload = {
       household_id: gate.member.household_id,
       title: form.title.trim(),
       kind: form.kind,
@@ -74,13 +77,34 @@ export default function EventsPage() {
       notes: form.notes.trim() || null,
       remind_day_before: form.remind_day_before,
       created_by: gate.member.id,
-    });
+    };
+    const write = editingId
+      ? gate.supabase.from("hms_events").update(payload).eq("id", editingId)
+      : gate.supabase.from("hms_events").insert(payload);
+    const { error: writeError } = await write;
     if (writeError) setError(writeError.message);
     else {
       setForm(blank);
+      setEditingId(null);
       setComposer(false);
       await load();
     }
+  }
+
+  function startEdit(row: EventRow) {
+    setForm({
+      title: row.title,
+      kind: row.kind,
+      event_date: row.event_date,
+      event_time: row.event_time?.slice(0, 5) ?? "",
+      person_id: row.person_id ?? "",
+      place: row.place ?? "",
+      notes: row.notes ?? "",
+      remind_day_before: row.remind_day_before,
+    });
+    setEditingId(row.id);
+    setComposer(true);
+    setError("");
   }
 
   async function remove(id: string) {
@@ -105,7 +129,7 @@ export default function EventsPage() {
       <PageHead title="אירועים" action={<button className="btn btn-primary" type="button" onClick={() => setComposer(true)}>אירוע חדש</button>} />
       <Alert>{error}</Alert>
       {notice ? <p className="note">{notice}</p> : null}
-      <Sheet open={composer} title="אירוע חדש" onClose={() => setComposer(false)}>
+      <Sheet open={composer} title={editingId ? "עריכת אירוע" : "אירוע חדש"} onClose={() => { setComposer(false); setEditingId(null); setForm(blank); }}>
       <form className="stack" onSubmit={save}>
         <label>
           כותרת
@@ -154,7 +178,7 @@ export default function EventsPage() {
             <button className="btn btn-quiet" type="button" onClick={enableReminders}>תזכורת</button>
           </div>
         </details>
-        <button className="btn btn-primary" type="submit">שמירה</button>
+        <button className="btn btn-primary" type="submit">{editingId ? "שמירת שינוי" : "שמירה"}</button>
       </form>
       </Sheet>
       {!rows ? <Skeleton rows={3} /> : null}
@@ -163,7 +187,13 @@ export default function EventsPage() {
         <section className="card">
           <ul className="stack">
             {rows.map((row) => (
-              <li key={row.id} className="row-line">
+              <SwipeRow
+                key={row.id}
+                endActions={[
+                  { label: "עריכה", icon: <Pencil aria-hidden="true" />, onSelect: () => startEdit(row) },
+                  { label: "מחיקה", icon: <Trash2 aria-hidden="true" />, onSelect: () => remove(row.id), tone: "danger" },
+                ]}
+              >
                 <div className="row-open">
                   <span>{row.title}</span>
                   <span className="meta">
@@ -173,9 +203,10 @@ export default function EventsPage() {
                   </span>
                 </div>
                 <RowMenu>
+                  <MenuItem onSelect={() => startEdit(row)}>עריכה</MenuItem>
                   <MenuItem danger onSelect={() => remove(row.id)}>מחיקה</MenuItem>
                 </RowMenu>
-              </li>
+              </SwipeRow>
             ))}
           </ul>
         </section>

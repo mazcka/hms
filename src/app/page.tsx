@@ -1,11 +1,12 @@
 "use client";
 
-import { Circle, Gift } from "lucide-react";
+import { Check, Circle, Gift } from "lucide-react";
 import Link from "next/link";
 import { IconButton, Tip } from "@/components/menu";
 import { useEffect, useState } from "react";
 import { useHousehold } from "@/components/auth-provider";
 import { TaskLine } from "@/components/task-line";
+import { SwipeRow } from "@/components/swipe-row";
 import { Alert, Empty, PageHead, PersonLink, Skeleton } from "@/components/ui";
 import { WEEKDAYS, addDaysIso, todayIso } from "@/lib/labels";
 import { HMS_REFRESH, TASK_FIELDS, arrangeTasks, type Task } from "@/lib/task";
@@ -156,7 +157,14 @@ export default function WeekPage() {
               <p className="meta">{list.name}</p>
               <ul className="stack">
                 {list.items.map((item) => (
-                  <li key={item.id} className="row-line">
+                  <SwipeRow
+                    key={item.id}
+                    startActions={[{
+                      label: "נקנה",
+                      icon: <Check aria-hidden="true" />,
+                      onSelect: () => toggleBought(item),
+                    }]}
+                  >
                     <IconButton label={`סמן את ${item.name} כנקנה`} onClick={() => toggleBought(item)}>
                       <Circle size={18} aria-hidden="true" />
                     </IconButton>
@@ -164,7 +172,7 @@ export default function WeekPage() {
                       <span className="shop-amount">{formatAmount(item) || "–"}</span>
                       <span>{item.name}</span>
                     </div>
-                  </li>
+                  </SwipeRow>
                 ))}
               </ul>
             </div>
