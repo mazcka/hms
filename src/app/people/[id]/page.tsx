@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useHousehold } from "@/components/auth-provider";
+import { CollapsibleSection } from "@/components/collapsible-section";
 import { Alert, Empty } from "@/components/ui";
 import { EVENT_KINDS, RELATIONS, WEEKDAYS, WISH_STATUS } from "@/lib/labels";
 
@@ -50,26 +51,23 @@ export default function PersonPage() {
       <p className="eyebrow">{RELATIONS[person.relation]}</p>
       <h1>{person.name}</h1>
       <Alert>{error}</Alert>
-      <section className="card tone tone-classes">
-        <h2>חוגים</h2>
+      <CollapsibleSection storageKey={`person-${id}-classes`} title={<h2>חוגים</h2>} className="tone tone-classes">
         {classes?.length === 0 ? <Empty title="אין חוגים" /> : null}
         <ul className="stack">
           {classes?.map((row) => (
             <li key={row.id}>{(row.weekdays?.length ? row.weekdays : [row.weekday]).map((day) => WEEKDAYS[day]).join(", ")} · {row.starts_at.slice(0, 5)} · {row.name}</li>
           ))}
         </ul>
-      </section>
-      <section className="card tone tone-events">
-        <h2>אירועים</h2>
+      </CollapsibleSection>
+      <CollapsibleSection storageKey={`person-${id}-events`} title={<h2>אירועים</h2>} className="tone tone-events">
         {events?.length === 0 ? <Empty title="אין אירועים" /> : null}
         <ul className="stack">
           {events?.map((row) => (
             <li key={row.id}>{row.event_date} · {row.title}</li>
           ))}
         </ul>
-      </section>
-      <section className="card tone tone-wishes">
-        <h2>משאלות</h2>
+      </CollapsibleSection>
+      <CollapsibleSection storageKey={`person-${id}-wishes`} title={<h2>משאלות</h2>} className="tone tone-wishes">
         {wishes?.length === 0 ? <Empty title="אין משאלות" /> : null}
         <ul className="stack">
           {wishes?.map((row) => (
@@ -79,7 +77,7 @@ export default function PersonPage() {
             </li>
           ))}
         </ul>
-      </section>
+      </CollapsibleSection>
     </>
   );
 }

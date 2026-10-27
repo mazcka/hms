@@ -3,6 +3,7 @@
 import { Pencil, Trash2 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useHousehold } from "@/components/auth-provider";
+import { CollapsibleSection } from "@/components/collapsible-section";
 import { PlaceField } from "@/components/place-field";
 import { MenuItem, RowMenu } from "@/components/menu";
 import { Sheet } from "@/components/sheet";
@@ -184,7 +185,7 @@ export default function EventsPage() {
       {!rows ? <Skeleton rows={3} /> : null}
       {rows && rows.length === 0 ? <Empty title="אין אירועים" action={<button className="btn btn-primary" type="button" onClick={() => setComposer(true)}>אירוע חדש</button>} /> : null}
       {rows && rows.length > 0 ? (
-        <section className="card">
+        <CollapsibleSection storageKey="events-list" title={<h2>כל האירועים</h2>}>
           <ul className="stack">
             {rows.map((row) => (
               <SwipeRow
@@ -209,7 +210,7 @@ export default function EventsPage() {
               </SwipeRow>
             ))}
           </ul>
-        </section>
+        </CollapsibleSection>
       ) : null}
     </>
   );

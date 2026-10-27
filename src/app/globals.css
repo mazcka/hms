@@ -119,6 +119,38 @@ h2 {
 .stack { display: flex; flex-direction: column; gap: var(--space-sm); }
 .row { display: flex; flex-wrap: wrap; gap: var(--space-sm); align-items: center; }
 .spread { display: flex; justify-content: space-between; gap: var(--space-sm); align-items: center; }
+.collapsible-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+.collapsible-toggle {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.collapsible-toggle span { min-width: 0; }
+.collapsible-toggle h2 { margin: 0; }
+.collapsible-toggle svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  transition: transform 180ms ease;
+}
+.collapsible-section-open .collapsible-toggle svg { transform: rotate(180deg); }
+.collapsible-action { flex: none; }
+.collapsible-content { padding-top: var(--space-sm); }
+.collapsible-content[hidden] { display: none; }
 
 label { display: flex; flex-direction: column; gap: var(--space-xs); font-weight: 600; font-size: var(--text-sm); }
 .shop-preview {
@@ -852,7 +884,7 @@ details > summary {
   .panel-tasks { grid-row: auto; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .btn, .nav a, input, select, textarea, .modal-back, .panel, .swipe-content { transition: none; }
+  .btn, .nav a, input, select, textarea, .modal-back, .panel, .swipe-content, .collapsible-toggle svg { transition: none; }
   .btn:hover:not(:disabled), .panel:hover { transform: none; }
   .modal-back { backdrop-filter: none; }
   .skeleton span { animation: none; }

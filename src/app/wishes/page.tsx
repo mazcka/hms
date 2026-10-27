@@ -3,6 +3,7 @@
 import { Check, ListPlus, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useHousehold } from "@/components/auth-provider";
+import { CollapsibleSection } from "@/components/collapsible-section";
 import { MenuItem, RowMenu } from "@/components/menu";
 import { Sheet } from "@/components/sheet";
 import { SwipeRow } from "@/components/swipe-row";
@@ -209,7 +210,7 @@ export default function WishesPage() {
       {!rows ? <Skeleton rows={3} /> : null}
       {rows && rows.length === 0 ? <Empty title="אין משאלות" action={<button className="btn btn-primary" type="button" onClick={() => setComposer(true)}>משאלה חדשה</button>} /> : null}
       {rows && rows.length > 0 ? (
-        <section className="card">
+        <CollapsibleSection storageKey="wishes-list" title={<h2>כל המשאלות</h2>}>
           <ul className="stack">
             {rows.map((row) => (
               <SwipeRow
@@ -244,7 +245,7 @@ export default function WishesPage() {
               </SwipeRow>
             ))}
           </ul>
-        </section>
+        </CollapsibleSection>
       ) : null}
     </>
   );
