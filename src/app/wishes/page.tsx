@@ -7,7 +7,7 @@ import { MenuItem, RowMenu } from "@/components/menu";
 import { Sheet } from "@/components/sheet";
 import { SwipeRow } from "@/components/swipe-row";
 import { Alert, Empty, PageHead, PersonLink, Skeleton } from "@/components/ui";
-import { notifyRefresh } from "@/lib/task";
+import { HMS_REFRESH, notifyRefresh } from "@/lib/task";
 import { WISH_STATUS } from "@/lib/labels";
 
 type Person = { id: string; name: string };
@@ -46,6 +46,11 @@ export default function WishesPage() {
 
   useEffect(() => {
     load();
+    function onRefresh() {
+      load();
+    }
+    window.addEventListener(HMS_REFRESH, onRefresh);
+    return () => window.removeEventListener(HMS_REFRESH, onRefresh);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gate]);
 
