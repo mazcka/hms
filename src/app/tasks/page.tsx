@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useHousehold } from "@/components/auth-provider";
+import { CollapsibleSection } from "@/components/collapsible-section";
 import { TaskLine } from "@/components/task-line";
 import { Alert, Empty, PageHead, Skeleton } from "@/components/ui";
 import { TASK_FIELDS, TASKS_CHANGED, arrangeTasks, notifyTasksChanged, type Task } from "@/lib/task";
@@ -77,13 +78,13 @@ export default function TasksPage() {
       {!rows ? <Skeleton rows={4} /> : null}
       {rows && rows.length === 0 ? <Empty title="אין משימות" hint="כתבו כותרת למעלה. תאריך ואחראי נשמרים בעריכה." /> : null}
       {rows && rows.length > 0 ? (
-        <section className="card tone tone-tasks">
+        <CollapsibleSection storageKey="tasks-list" title={<h2>כל המשימות</h2>} className="tone tone-tasks">
           <ul className="stack">
             {rows.map((task) => (
               <TaskLine key={task.id} task={task} />
             ))}
           </ul>
-        </section>
+        </CollapsibleSection>
       ) : null}
     </>
   );

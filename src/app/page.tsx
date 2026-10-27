@@ -5,12 +5,13 @@ import Link from "next/link";
 import { IconButton, Tip } from "@/components/menu";
 import { useEffect, useState } from "react";
 import { useHousehold } from "@/components/auth-provider";
+import { CollapsibleSection } from "@/components/collapsible-section";
 import { TaskLine } from "@/components/task-line";
 import { SwipeRow } from "@/components/swipe-row";
 import { Alert, Empty, PageHead, PersonLink, Skeleton } from "@/components/ui";
 import { WEEKDAYS, addDaysIso, todayIso } from "@/lib/labels";
 import { HMS_REFRESH, TASK_FIELDS, arrangeTasks, type Task } from "@/lib/task";
-type Item = { id: string; name: string; quantity: number | null; unit: string | null; bought: boolean };
+type Item = { id: string; name: string; quantity: number | null; unit: string | null; bought: boolean; sort_order: number };
 type List = { id: string; name: string; hms_shop_items: Item[] };
 type ClassRow = { id: string; name: string; starts_at: string; place: string | null; person_id: string };
 type Person = { id: string; name: string };
@@ -39,10 +40,10 @@ export default function WeekPage() {
       const weekday = new Date().getDay();
       Promise.all([
         gate!.supabase.from("hms_tasks").select(TASK_FIELDS).eq("household_id", gate!.member.household_id),
-        gate!.supabase.from("hms_shop_lists").select("id, name, hms_shop_items(id, name, quantity, unit, bought)").eq("household_id", gate!.member.household_id).order("name"),
+        gate!.supabase.from("hms_shop_lists").select("id, name, hms_shop_items(id, name, quantity, unit, bought, sort_order)").eq("household_id", gate!.member.household_id).order("name"),
         gate!.supabase.from("hms_classes").select("id, name, starts_at, place, person_id, weekdays, weekday").eq("household_id", gate!.member.household_id).contains("weekdays", [weekday]).eq("active", true).order("starts_at"),
         gate!.supabase.from("hms_people").select("id, name").eq("household_id", gate!.member.household_id),
-        gate!.supabase.from("hms_events").select("id, title, event_date, event_time, remind_day_before").eq("household_id", gate!.member.household_id).gte("event_date", today).order("event_date").limit(8),
+        gate!.supabase.from("hms_events").select("id, title, event_date, event_time, remind_day_before").eq("household_id", gate!.member.household_id).gte("event_date", today).order("event_date"),
       ]).then(([t, s, c, p, e]) => {
         if (!active) return;
         const message = t.error?.message || s.error?.message || c.error?.message || p.error?.message || e.error?.message;
@@ -80,7 +81,7 @@ export default function WeekPage() {
   const shopLists = (lists ?? [])
     .map((list) => ({
       ...list,
-      items: [...(list.hms_shop_items ?? [])].sort((a, b) => Number(a.bought) - Number(b.bought)),
+      items: [...(list.hms_shop_items ?? [])].sort((a, b) => Number(a.bought) - Number(b.bought) || a.sort_order - b.sort_order),
     }))
     .filter((list) => list.items.length > 0);
   const pendingCount = shopLists.reduce((n, list) => n + list.items.filter((item) => !item.bought).length, 0);
@@ -107,9 +108,9 @@ export default function WeekPage() {
     if (writeError) setError(writeError.message);
   }
 
-  const visibleTasks = (tasks ?? []).filter((task) => task.status !== "done").slice(0, 5);
+  const visibleTasks = (tasks ?? []).filter((task) => task.status !== "done");
   const visibleShop = shopLists
-    .map((list) => ({ ...list, items: list.items.filter((item) => !item.bought).slice(0, 4) }))
+    .map((list) => ({ ...list, items: list.items.filter((item) => !item.bought) }))
     .filter((list) => list.items.length > 0);
 
   return (
@@ -127,11 +128,12 @@ export default function WeekPage() {
       />
       <Alert>{error}</Alert>
       <div className="bento">
-        <section className="card panel panel-tasks">
-          <div className="spread">
-            <h2>משימות פתוחות</h2>
-            <Link href="/tasks">{openCount}</Link>
-          </div>
+        <CollapsibleSection
+          storageKey="home-tasks"
+          title={<h2>משימות פתוחות</h2>}
+          action={<Link href="/tasks">{openCount}</Link>}
+          className="panel panel-tasks"
+        >
           {loading ? <Skeleton rows={4} /> : null}
           {!loading && visibleTasks.length === 0 ? (
             <Empty title="אין משימות פתוחות" action={<Link className="btn btn-primary" href="/tasks">הוספת משימה</Link>} />
@@ -141,13 +143,14 @@ export default function WeekPage() {
               <TaskLine key={task.id} task={task} />
             ))}
           </ul>
-        </section>
+        </CollapsibleSection>
 
-        <section className="card panel panel-shop">
-          <div className="spread">
-            <h2>לקנות</h2>
-            <Link href="/shop">{pendingCount}</Link>
-          </div>
+        <CollapsibleSection
+          storageKey="home-shop"
+          title={<h2>לקנות</h2>}
+          action={<Link href="/shop">{pendingCount}</Link>}
+          className="panel panel-shop"
+        >
           {loading ? <Skeleton rows={3} /> : null}
           {!loading && visibleShop.length === 0 ? (
             <Empty title="הרשימה ריקה" action={<Link className="btn btn-quiet" href="/shop">לקניות</Link>} />
@@ -177,13 +180,14 @@ export default function WeekPage() {
               </ul>
             </div>
           ))}
-        </section>
+        </CollapsibleSection>
 
-        <section className="card panel">
-          <div className="spread">
-            <h2>חוגים היום</h2>
-            <Link href="/classes">הכל</Link>
-          </div>
+        <CollapsibleSection
+          storageKey="home-classes"
+          title={<h2>חוגים היום</h2>}
+          action={<Link href="/classes">הכל</Link>}
+          className="panel"
+        >
           {loading ? <Skeleton rows={2} /> : null}
           {!loading && classes?.length === 0 ? <Empty title="אין חוגים היום" /> : null}
           <ul className="stack">
@@ -194,24 +198,25 @@ export default function WeekPage() {
               </li>
             ))}
           </ul>
-        </section>
+        </CollapsibleSection>
 
-        <section className="card panel">
-          <div className="spread">
-            <h2>אירועים</h2>
-            <Link href="/events">הכל</Link>
-          </div>
+        <CollapsibleSection
+          storageKey="home-events"
+          title={<h2>אירועים</h2>}
+          action={<Link href="/events">הכל</Link>}
+          className="panel"
+        >
           {loading ? <Skeleton rows={2} /> : null}
           {!loading && events?.length === 0 ? <Empty title="אין אירועים קרובים" /> : null}
           <ul className="stack">
-            {(events ?? []).slice(0, 4).map((event) => (
+            {(events ?? []).map((event) => (
               <li key={event.id} className="spread">
                 <span>{event.title}</span>
                 <span className="meta">{event.event_date.slice(5)}{event.event_time ? ` ${event.event_time.slice(0, 5)}` : ""}</span>
               </li>
             ))}
           </ul>
-        </section>
+        </CollapsibleSection>
       </div>
     </>
   );

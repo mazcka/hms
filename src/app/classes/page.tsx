@@ -3,6 +3,7 @@
 import { Pause, Pencil, Play, Trash2 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useHousehold } from "@/components/auth-provider";
+import { CollapsibleSection } from "@/components/collapsible-section";
 import { PlaceField } from "@/components/place-field";
 import { MenuItem, RowMenu } from "@/components/menu";
 import { Sheet } from "@/components/sheet";
@@ -239,8 +240,7 @@ export default function ClassesPage() {
         const dayRows = (rows ?? []).filter((row) => classDays(row).includes(index));
         if (!dayRows.length) return null;
         return (
-          <section className="card" key={day}>
-            <h2>{day}</h2>
+          <CollapsibleSection storageKey={`classes-day-${index}`} title={<h2>{day}</h2>} key={day}>
             <ul className="stack">
               {dayRows.map((row) => (
                 <SwipeRow
@@ -271,7 +271,7 @@ export default function ClassesPage() {
                 </SwipeRow>
               ))}
             </ul>
-          </section>
+          </CollapsibleSection>
         );
       })}
     </>
