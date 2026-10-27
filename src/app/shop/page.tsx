@@ -1,8 +1,9 @@
 "use client";
 
-import { Check, Circle, Plus, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Check, Circle, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useHousehold } from "@/components/auth-provider";
+import { CollapsibleSection } from "@/components/collapsible-section";
 import { IconButton, MenuItem, RowMenu } from "@/components/menu";
 import { Sheet } from "@/components/sheet";
 import { SwipeRow } from "@/components/swipe-row";
@@ -17,6 +18,7 @@ type Item = {
   unit: string | null;
   bought: boolean;
   one_off: boolean;
+  sort_order: number;
 };
 type List = { id: string; name: string; hms_shop_items: Item[] };
 function formatAmount(item: Item) {
@@ -40,11 +42,14 @@ export default function ShopPage() {
     if (!gate) return;
     const { data, error: queryError } = await gate.supabase
       .from("hms_shop_lists")
-      .select("id, name, hms_shop_items(id, name, quantity, unit, bought, one_off)")
+      .select("id, name, hms_shop_items(id, name, quantity, unit, bought, one_off, sort_order)")
       .eq("household_id", gate.member.household_id)
       .order("name");
     if (queryError) setError(queryError.message);
-    const rows = (data ?? []) as List[];
+    const rows = ((data ?? []) as List[]).map((list) => ({
+      ...list,
+      hms_shop_items: [...(list.hms_shop_items ?? [])].sort((a, b) => a.sort_order - b.sort_order),
+    }));
     setLists(rows);
     if (!listId && rows[0]) setListId(rows[0].id);
   }
@@ -127,6 +132,32 @@ export default function ShopPage() {
     const { error: writeError } = await gate.supabase.from("hms_shop_items").delete().eq("id", item.id);
     if (writeError) setError(writeError.message);
     else await load();
+  }
+
+  async function moveItem(list: List, itemIndex: number, direction: -1 | 1) {
+    if (!gate) return;
+    const adjacent = list.hms_shop_items[itemIndex + direction];
+    const item = list.hms_shop_items[itemIndex];
+    if (!item || !adjacent) return;
+
+    setError("");
+    setLists((current) => (current ?? []).map((row) => {
+      if (row.id !== list.id) return row;
+      const items = [...row.hms_shop_items];
+      [items[itemIndex], items[itemIndex + direction]] = [items[itemIndex + direction], items[itemIndex]];
+      return { ...row, hms_shop_items: items };
+    }));
+
+    const { error: writeError } = await gate.supabase.rpc("hms_swap_shop_items", {
+      first_id: item.id,
+      second_id: adjacent.id,
+    });
+    if (writeError) {
+      setError(writeError.message);
+      await load();
+    } else {
+      notifyRefresh();
+    }
   }
 
   async function endSession(id: string) {
@@ -219,17 +250,21 @@ export default function ShopPage() {
       {!lists ? <Skeleton rows={3} /> : null}
       {lists && lists.length === 0 ? <Empty title="אין קטגוריות" hint="הוסיפו קטגוריה ואז פריטים." action={<button className="btn btn-primary" type="button" onClick={() => setAddingList(true)}>קטגוריה חדשה</button>} /> : null}
       {lists?.map((list) => (
-        <section className="card tone tone-shop" key={list.id}>
-          <div className="spread">
-            <h2>{list.name}</h2>
+        <CollapsibleSection
+          className="tone tone-shop"
+          key={list.id}
+          storageKey={`shop-list-${list.id}`}
+          title={<h2>{list.name}</h2>}
+          action={
             <RowMenu label={`פעולות ${list.name}`}>
               <MenuItem onSelect={() => endSession(list.id)}>סיום סשן</MenuItem>
               <MenuItem danger onSelect={() => removeList(list.id)}>מחיקת קטגוריה</MenuItem>
             </RowMenu>
-          </div>
+          }
+        >
           {(list.hms_shop_items ?? []).length === 0 ? <Empty title="אין פריטים בקטגוריה" /> : null}
           <ul className="stack">
-            {(list.hms_shop_items ?? []).map((item) => (
+            {(list.hms_shop_items ?? []).map((item, itemIndex) => (
               <SwipeRow
                 key={item.id}
                 startActions={[{
@@ -237,12 +272,25 @@ export default function ShopPage() {
                   icon: item.bought ? <Circle aria-hidden="true" /> : <Check aria-hidden="true" />,
                   onSelect: () => toggle(item),
                 }]}
-                endActions={[{
-                  label: "מחיקה",
-                  icon: <Trash2 aria-hidden="true" />,
-                  onSelect: () => removeItem(item),
-                  tone: "danger",
-                }]}
+                endActions={[
+                  ...(itemIndex > 0 ? [{
+                    label: "למעלה",
+                    icon: <ArrowUp aria-hidden="true" />,
+                    onSelect: () => moveItem(list, itemIndex, -1 as const),
+                  }] : []),
+                  ...(itemIndex < list.hms_shop_items.length - 1 ? [{
+                    label: "למטה",
+                    icon: <ArrowDown aria-hidden="true" />,
+                    onSelect: () => moveItem(list, itemIndex, 1 as const),
+                    tone: "warning" as const,
+                  }] : []),
+                  {
+                    label: "מחיקה",
+                    icon: <Trash2 aria-hidden="true" />,
+                    onSelect: () => removeItem(item),
+                    tone: "danger" as const,
+                  },
+                ]}
               >
                 <IconButton
                   label={item.bought ? `בטל סימון של ${item.name}` : `סמן את ${item.name} כנקנה`}
@@ -258,10 +306,15 @@ export default function ShopPage() {
                     {item.one_off ? <span className="meta"> חד-פעמי</span> : null}
                   </span>
                 </div>
+                <RowMenu label={`סידור ופעולות עבור ${item.name}`}>
+                  {itemIndex > 0 ? <MenuItem onSelect={() => moveItem(list, itemIndex, -1)}>העברה למעלה</MenuItem> : null}
+                  {itemIndex < list.hms_shop_items.length - 1 ? <MenuItem onSelect={() => moveItem(list, itemIndex, 1)}>העברה למטה</MenuItem> : null}
+                  <MenuItem danger onSelect={() => removeItem(item)}>מחיקה</MenuItem>
+                </RowMenu>
               </SwipeRow>
             ))}
           </ul>
-        </section>
+        </CollapsibleSection>
       ))}
     </>
   );
