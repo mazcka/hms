@@ -1,17 +1,19 @@
 "use client";
 
-import { Calendar, CalendarDays, Check, ShoppingBag } from "lucide-react";
+import { Calendar, CalendarDays, Check, Pencil, ShoppingBag, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { useHousehold } from "@/components/auth-provider";
 import { CollapsibleSection } from "@/components/collapsible-section";
 import { MasonryGrid } from "@/components/masonry-grid";
+import { Sheet } from "@/components/sheet";
 import { TaskLine } from "@/components/task-line";
 import { SwipeRow } from "@/components/swipe-row";
 import { Alert, Empty, ItemLabel, PageHead, PersonLink, Skeleton } from "@/components/ui";
 import { WEEKDAYS, addDaysIso, todayIso } from "@/lib/labels";
-import { HMS_REFRESH, TASK_FIELDS, arrangeTasks, type Task } from "@/lib/task";
-type Item = { id: string; name: string; quantity: number | null; unit: string | null; bought: boolean; sort_order: number };
+import { HMS_REFRESH, TASK_FIELDS, arrangeTasks, notifyRefresh, type Task } from "@/lib/task";
+type Item = { id: string; name: string; quantity: number | null; unit: string | null; bought: boolean; one_off: boolean; sort_order: number };
+type ShopEdit = { id: string; name: string; quantity: string; oneOff: boolean; listId: string };
 type List = { id: string; name: string; sort_order: number; hms_shop_items: Item[] };
 type ClassRow = { id: string; name: string; starts_at: string; place: string | null; person_id: string };
 type Person = { id: string; name: string };
@@ -31,6 +33,7 @@ export default function WeekPage() {
   const [classes, setClasses] = useState<ClassRow[] | null>(null);
   const [people, setPeople] = useState<Person[]>([]);
   const [events, setEvents] = useState<EventRow[] | null>(null);
+  const [editing, setEditing] = useState<ShopEdit | null>(null);
 
   useEffect(() => {
     if (!gate) return;
@@ -40,7 +43,7 @@ export default function WeekPage() {
       const weekday = new Date().getDay();
       Promise.all([
         gate!.supabase.from("hms_tasks").select(TASK_FIELDS).eq("household_id", gate!.member.household_id),
-        gate!.supabase.from("hms_shop_lists").select("id, name, sort_order, hms_shop_items(id, name, quantity, unit, bought, sort_order)").eq("household_id", gate!.member.household_id).order("sort_order"),
+        gate!.supabase.from("hms_shop_lists").select("id, name, sort_order, hms_shop_items(id, name, quantity, unit, bought, one_off, sort_order)").eq("household_id", gate!.member.household_id).order("sort_order"),
         gate!.supabase.from("hms_classes").select("id, name, starts_at, place, person_id, weekdays, weekday").eq("household_id", gate!.member.household_id).contains("weekdays", [weekday]).eq("active", true).order("starts_at"),
         gate!.supabase.from("hms_people").select("id, name").eq("household_id", gate!.member.household_id),
         gate!.supabase.from("hms_events").select("id, title, event_date, event_time, remind_day_before").eq("household_id", gate!.member.household_id).gte("event_date", today).order("event_date"),
@@ -106,6 +109,47 @@ export default function WeekPage() {
     );
     const { error: writeError } = await gate.supabase.from("hms_shop_items").update({ bought }).eq("id", item.id);
     if (writeError) setError(writeError.message);
+    else notifyRefresh();
+  }
+
+  function startEdit(item: Item, listId: string) {
+    setEditing({
+      id: item.id,
+      name: item.name,
+      quantity: item.quantity == null ? "" : String(item.quantity),
+      oneOff: item.one_off,
+      listId,
+    });
+  }
+
+  async function saveEdit(event: FormEvent) {
+    event.preventDefault();
+    if (!gate || !editing) return;
+    const name = editing.name.trim();
+    const rawQuantity = editing.quantity.replace(",", ".").trim();
+    const quantity = rawQuantity === "" ? null : Number(rawQuantity);
+    if (!name || !editing.listId || (quantity != null && !Number.isFinite(quantity))) {
+      setError("חסרים שם או קטגוריה.");
+      return;
+    }
+    const { error: writeError } = await gate.supabase.from("hms_shop_items").update({
+      name,
+      quantity,
+      one_off: editing.oneOff,
+      list_id: editing.listId,
+    }).eq("id", editing.id);
+    if (writeError) setError(writeError.message);
+    else {
+      setEditing(null);
+      notifyRefresh();
+    }
+  }
+
+  async function removeItem(item: Item) {
+    if (!gate || !window.confirm(`למחוק את "${item.name}" מהרשימה?`)) return;
+    const { error: writeError } = await gate.supabase.from("hms_shop_items").delete().eq("id", item.id);
+    if (writeError) setError(writeError.message);
+    else notifyRefresh();
   }
 
   const visibleTasks = (tasks ?? []).filter((task) => task.status !== "done");
@@ -213,6 +257,10 @@ export default function WeekPage() {
                       icon: <Check aria-hidden="true" />,
                       onSelect: () => toggleBought(item),
                     }]}
+                    endActions={[
+                      { label: "עריכה", icon: <Pencil aria-hidden="true" />, onSelect: () => startEdit(item, list.id) },
+                      { label: "מחיקה", icon: <Trash2 aria-hidden="true" />, onSelect: () => removeItem(item), tone: "danger" },
+                    ]}
                   >
                     <span className="row-mark" aria-hidden="true"><ShoppingBag /></span>
                     <div className="row-open shop-pair">
@@ -229,6 +277,33 @@ export default function WeekPage() {
         {hasClasses ? null : classesCard}
         {hasEvents ? null : eventsCard}
       </MasonryGrid>
+      <Sheet open={Boolean(editing)} title="עריכת פריט" onClose={() => setEditing(null)}>
+        {editing ? (
+          <form className="stack" onSubmit={saveEdit}>
+            <label>
+              שם
+              <input value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} required autoFocus />
+            </label>
+            <label>
+              כמות
+              <input inputMode="decimal" value={editing.quantity} onChange={(e) => setEditing({ ...editing, quantity: e.target.value })} />
+            </label>
+            <label>
+              קטגוריה
+              <select value={editing.listId} onChange={(e) => setEditing({ ...editing, listId: e.target.value })}>
+                {(lists ?? []).map((list) => (
+                  <option key={list.id} value={list.id}>{list.name}</option>
+                ))}
+              </select>
+            </label>
+            <label className="check">
+              <input type="checkbox" checked={editing.oneOff} onChange={(e) => setEditing({ ...editing, oneOff: e.target.checked })} />
+              חד-פעמי
+            </label>
+            <button className="btn btn-primary" type="submit">שמירת שינוי</button>
+          </form>
+        ) : null}
+      </Sheet>
     </>
   );
 }

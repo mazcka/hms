@@ -523,6 +523,14 @@ ul.stack > li:not(.swipe-row) {
   touch-action: pan-y;
   user-select: none;
 }
+.swipe-content.status-active,
+li.status-active {
+  background: color-mix(in srgb, var(--color-accent) 22%, white);
+}
+.swipe-content.status-settled,
+li.status-settled {
+  background: color-mix(in srgb, var(--color-primary) 10%, white);
+}
 .swipe-actions {
   display: flex;
   flex: none;
@@ -639,6 +647,11 @@ ul.stack > li:not(.swipe-row) {
   color: var(--color-primary);
 }
 .row-mark svg { width: 16px; height: 16px; }
+.status-active .row-mark,
+.status-settled .row-mark {
+  background: var(--color-card);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 28%, var(--color-border));
+}
 .tip {
   z-index: 70;
   padding: 0.28rem 0.55rem;
@@ -675,6 +688,11 @@ ul.stack > li:not(.swipe-row) {
   cursor: pointer;
 }
 .icon-btn:hover { background: #e3dacb; }
+.row-menu {
+  border-color: color-mix(in srgb, var(--ink) 28%, var(--color-border));
+  background: var(--color-card);
+}
+.row-menu:hover { background: var(--color-muted); }
 .page-head .icon-btn:hover,
 .home-back:hover { background: var(--color-muted); }
 .quick-add:hover { background: var(--color-primary-hover); }

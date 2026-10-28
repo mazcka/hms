@@ -82,7 +82,7 @@ export function RowMenu({ label = "עוד", children }: { label?: string; childr
     <MenuCloseContext.Provider value={() => setOpen(false)}>
       <button
         ref={triggerRef}
-        className="icon-btn"
+        className="icon-btn row-menu"
         type="button"
         aria-label={label}
         aria-expanded={open}

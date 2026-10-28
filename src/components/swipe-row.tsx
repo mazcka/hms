@@ -23,12 +23,14 @@ export function SwipeRow({
   startActions = [],
   endActions = [],
   className = "",
+  tone = "quiet",
   sortable = false,
 }: {
   children: ReactNode;
   startActions?: SwipeAction[];
   endActions?: SwipeAction[];
   className?: string;
+  tone?: "quiet" | "active" | "settled";
   sortable?: boolean;
 }) {
   const rowRef = useRef<HTMLLIElement>(null);
@@ -61,7 +63,8 @@ export function SwipeRow({
   function begin(event: ReactPointerEvent<HTMLDivElement>) {
     if (event.pointerType === "mouse" && event.button !== 0) return;
     const target = event.target as HTMLElement;
-    if (target.closest("[data-drag-handle], button, a, input, textarea, select")) return;
+    const blocked = target.closest("[data-drag-handle], a, input, textarea, select, button");
+    if (blocked && !blocked.classList.contains("row-open")) return;
     origin.current = { x: event.clientX, y: event.clientY, offset };
     horizontal.current = null;
     moved.current = false;
@@ -134,7 +137,7 @@ export function SwipeRow({
     >
       {actions(startActions, "start", startReveal)}
       <div
-        className={`swipe-content ${dragging ? "swipe-content-dragging" : ""}`}
+        className={`swipe-content status-${tone} ${dragging ? "swipe-content-dragging" : ""}`}
         onPointerDown={begin}
         onPointerMove={move}
         onPointerUp={finish}

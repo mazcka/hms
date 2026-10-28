@@ -70,7 +70,7 @@ export default function PersonPage() {
         {wishes?.length === 0 ? <Empty title="אין משאלות" /> : null}
         <ul className="stack">
           {wishes?.map((row) => (
-            <li key={row.id} className="spread">
+            <li key={row.id} className={`spread status-${row.status === "bought" ? "settled" : row.status === "planned" ? "active" : "quiet"}`}>
               <span>{row.title}</span>
               <span className="chip">{WISH_STATUS[row.status]}</span>
             </li>

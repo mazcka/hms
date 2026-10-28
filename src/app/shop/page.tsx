@@ -399,6 +399,7 @@ export default function ShopPage() {
                   <SwipeRow
                     key={item.id}
                     sortable
+                    tone={item.bought ? "settled" : "quiet"}
                     startActions={[{
                       label: item.bought ? "להחזיר" : "נקנה",
                       icon: item.bought ? <Circle aria-hidden="true" /> : <Check aria-hidden="true" />,

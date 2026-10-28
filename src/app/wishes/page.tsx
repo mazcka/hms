@@ -215,6 +215,7 @@ export default function WishesPage() {
             {rows.map((row) => (
               <SwipeRow
                 key={row.id}
+                tone={row.status === "bought" ? "settled" : row.status === "planned" ? "active" : "quiet"}
                 startActions={row.status === "planned" ? [
                   { label: "לקניות", icon: <ListPlus aria-hidden="true" />, onSelect: () => toShop(row) },
                   { label: "הבא", icon: <Check aria-hidden="true" />, onSelect: () => advanceStatus(row), tone: "warning" },
@@ -228,7 +229,7 @@ export default function WishesPage() {
               >
                 <span className="row-mark" aria-hidden="true"><Gift /></span>
                 <div className="row-open">
-                  <span>{row.title}</span>
+                  <span className={row.status === "bought" ? "bought" : undefined}>{row.title}</span>
                   <span className="meta">
                     {WISH_STATUS[row.status]}
                     {row.for_person_id ? <PersonLink id={row.for_person_id} name={people.find((p) => p.id === row.for_person_id)?.name ?? ""} /> : null}

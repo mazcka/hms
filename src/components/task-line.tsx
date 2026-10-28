@@ -41,6 +41,7 @@ export function TaskLine({ task }: { task: Task }) {
         { label: "עריכה", icon: <Pencil aria-hidden="true" />, onSelect: () => editor.open(task) },
         { label: "מחיקה", icon: <Trash2 aria-hidden="true" />, onSelect: () => editor.remove(task), tone: "danger" },
       ]}
+      tone={done ? "settled" : task.status === "in_progress" ? "active" : "quiet"}
     >
       {assignee ? <MemberMark name={assignee.display_name} /> : null}
       <button className="row-open" type="button" onClick={() => editor.open(task)}>
