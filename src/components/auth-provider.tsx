@@ -14,7 +14,7 @@ import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { Tip } from "@/components/menu";
 import { QuickAdd } from "@/components/quick-add";
 import { TaskEditorProvider } from "@/components/task-editor";
-import { Loader } from "@/components/ui";
+import { BrandMark, Loader } from "@/components/ui";
 import { getSupabase } from "@/lib/supabase";
 
 export type Member = {
@@ -49,7 +49,10 @@ function NavIcon({ name }: { name: (typeof NAV)[number]["icon"] }) {
   if (name === "home") {
     return (
       <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path {...common} d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1z" />
+        <path {...common} d="M4.5 11.2 12 5l7.5 6.2" />
+        <path {...common} d="M7 10.6V19h10v-8.4" />
+        <path {...common} d="M10.4 19v-4.2h3.2V19" />
+        <path {...common} d="M12 5.2c.2-1.1 1.5-1.5 2.1-.4" />
       </svg>
     );
   }
@@ -150,15 +153,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         {error && member ? <p className="alert" role="alert">{error}</p> : null}
         {supabase && ready && (pathname === "/login" || gate) ? (
           <TaskEditorProvider>
-            {showNav && pathname !== "/" ? (
-              <Tip label="השבוע">
-                <Link className="home-back" href="/" aria-label="השבוע">
-                  <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20">
-                    <path fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1z" />
-                  </svg>
-                </Link>
-              </Tip>
-            ) : null}
             {children}
           </TaskEditorProvider>
         ) : null}
@@ -183,10 +177,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+function BrandHeading({ title = "מצקה" }: { title?: string }) {
+  return (
+    <div className="brand-lockup">
+      <BrandMark size={44} />
+      <h1>{title}</h1>
+    </div>
+  );
+}
+
 function SetupMissing() {
   return (
     <section className="card stack">
-      <h1>מצקה</h1>
+      <BrandHeading />
       <p>
         חסרים מפתחות Supabase. העתיקו את <code>.env.example</code> אל <code>.env.local</code> ומלאו
         את <code>NEXT_PUBLIC_SUPABASE_URL</code> ואת <code>NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY</code>.
@@ -199,7 +202,7 @@ function SetupMissing() {
 function SignedOut() {
   return (
     <section className="card stack">
-      <h1>מצקה</h1>
+      <BrandHeading />
       <p>כדי לראות את השבוע צריך להתחבר.</p>
       <Link className="btn btn-primary" href="/login">
         כניסה
@@ -211,7 +214,7 @@ function SignedOut() {
 function NeedsHousehold({ userId, error }: { userId: string; error: string }) {
   return (
     <section className="card stack">
-      <h1>החשבון עדיין לא משויך לבית</h1>
+      <BrandHeading title="החשבון עדיין לא משויך לבית" />
       <p>
         אחרי שיש שני משתמשי Auth, יוצרים משק בית ושתי שורות ב-<code>hms_members</code> ב-SQL Editor.
         המדיניות חוסמת יצירה מהאפליקציה לפני שיש חברות.

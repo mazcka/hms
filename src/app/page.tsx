@@ -71,7 +71,7 @@ export default function WeekPage() {
       if (!event.remind_day_before || event.event_date !== tomorrow) continue;
       const key = `hms-remind-${event.id}-${tomorrow}`;
       if (localStorage.getItem(key)) continue;
-      new Notification("מצקה", { body: `מחר: ${event.title}` });
+      new Notification("מצקה", { body: `מחר: ${event.title}`, icon: "/icon-192.png" });
       localStorage.setItem(key, "1");
     }
   }, [events]);

@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
-import { Alert } from "@/components/ui";
+import { Alert, BrandMark } from "@/components/ui";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -50,7 +50,10 @@ export default function LoginPage() {
 
   return (
     <section className="card">
-      <p className="eyebrow">מצקה</p>
+      <p className="brand-lockup eyebrow">
+        <BrandMark size={40} />
+        מצקה
+      </p>
       <h1>{mode === "in" ? "כניסה" : "חשבון חדש"}</h1>
       <p className="lede">כניסה רק לשני בני הזוג, עם אימייל וסיסמה.</p>
       <form className="stack" onSubmit={onSubmit}>

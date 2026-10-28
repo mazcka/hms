@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { useHousehold } from "@/components/auth-provider";
 import { PlaceField } from "@/components/place-field";
 import { WeekdayPicker } from "@/components/weekday-picker";
-import { Alert } from "@/components/ui";
+import { Alert, PageHead } from "@/components/ui";
 import { DRAFT_KINDS, EVENT_KINDS, RELATIONS } from "@/lib/labels";
 import {
   emptyDraft,
@@ -219,8 +219,7 @@ export default function VoicePage() {
 
   return (
     <>
-      <h1>קול</h1>
-      <p className="lede">ההקלטה לא נשמרת. שורה בבית נוצרת רק אחרי „צור”.</p>
+      <PageHead title="קול" lede="ההקלטה לא נשמרת. שורה בבית נוצרת רק אחרי „צור”." />
       <Alert>{error}</Alert>
       <button className="btn btn-accent" type="button" onClick={() => void toggleRecord()} disabled={pending}>
         {recording ? "עצירת הקלטה" : "הקלטה"}

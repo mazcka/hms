@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useHousehold } from "@/components/auth-provider";
 import { CollapsibleSection } from "@/components/collapsible-section";
-import { Alert, Empty, Loader } from "@/components/ui";
+import { Alert, Empty, Loader, PageHead } from "@/components/ui";
 import { EVENT_KINDS, RELATIONS, WEEKDAYS, WISH_STATUS } from "@/lib/labels";
 
 type Person = { id: string; name: string; relation: keyof typeof RELATIONS };
@@ -48,8 +48,7 @@ export default function PersonPage() {
 
   return (
     <>
-      <p className="eyebrow">{RELATIONS[person.relation]}</p>
-      <h1>{person.name}</h1>
+      <PageHead title={person.name} lede={RELATIONS[person.relation]} />
       <Alert>{error}</Alert>
       <CollapsibleSection storageKey={`person-${id}-classes`} title={<h2>חוגים</h2>} className="tone tone-classes">
         {classes?.length === 0 ? <Empty title="אין חוגים" /> : null}

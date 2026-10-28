@@ -364,7 +364,6 @@ export default function ShopPage() {
           </div>
         ))}
       </div>
-      {/* <p className="meta"><Link href="/wishes">משאלות</Link></p> */}
       <Tip label="משאלות">
         <Link className="icon-btn home-link" href="/wishes" aria-label="משאלות">
           <Gift size={18} aria-hidden="true" />
