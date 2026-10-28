@@ -823,6 +823,24 @@ details > summary {
   gap: 0.75rem;
   align-items: start;
 }
+.masonry-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  align-items: start;
+}
+.masonry-grid-ready {
+  position: relative;
+  display: block;
+}
+.masonry-grid-ready .masonry-item {
+  position: absolute;
+  inset-inline-start: var(--masonry-inline-start);
+  top: var(--masonry-top);
+  width: var(--masonry-width);
+  transition: inset-inline-start 180ms ease, top 180ms ease, width 180ms ease;
+}
+.masonry-item > .card { margin-bottom: 0; }
 .panel-tasks { grid-row: span 2; }
 .panel { transition: transform 180ms ease; }
 .panel:hover { transform: translateY(-2px); }
@@ -881,10 +899,11 @@ details > summary {
 }
 @media (max-width: 720px) {
   .bento { grid-template-columns: 1fr; }
+  .masonry-grid { grid-template-columns: 1fr; }
   .panel-tasks { grid-row: auto; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .btn, .nav a, input, select, textarea, .modal-back, .panel, .swipe-content, .collapsible-toggle svg { transition: none; }
+  .btn, .nav a, input, select, textarea, .modal-back, .panel, .swipe-content, .collapsible-toggle svg, .masonry-item { transition: none; }
   .btn:hover:not(:disabled), .panel:hover { transform: none; }
   .modal-back { backdrop-filter: none; }
   .skeleton span { animation: none; }
