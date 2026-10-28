@@ -113,6 +113,46 @@ export default function WeekPage() {
   const visibleShop = shopLists
     .map((list) => ({ ...list, items: list.items.filter((item) => !item.bought) }))
     .filter((list) => list.items.length > 0);
+  const hasClasses = (classes?.length ?? 0) > 0;
+  const hasEvents = (events?.length ?? 0) > 0;
+  const classesCard = (
+    <CollapsibleSection
+      storageKey="home-classes"
+      title={<h2>חוגים היום</h2>}
+      action={<Link href="/classes">הכל</Link>}
+      className="panel"
+    >
+      {loading ? <Skeleton rows={2} /> : null}
+      {!loading && !hasClasses ? <Empty title="אין חוגים היום" /> : null}
+      <ul className="stack">
+        {(classes ?? []).map((row) => (
+          <li key={row.id} className="spread">
+            <span><strong>{row.starts_at.slice(0, 5)}</strong> {row.name}</span>
+            <PersonLink id={row.person_id} name={personName(row.person_id)} />
+          </li>
+        ))}
+      </ul>
+    </CollapsibleSection>
+  );
+  const eventsCard = (
+    <CollapsibleSection
+      storageKey="home-events"
+      title={<h2>אירועים</h2>}
+      action={<Link href="/events">הכל</Link>}
+      className="panel"
+    >
+      {loading ? <Skeleton rows={2} /> : null}
+      {!loading && !hasEvents ? <Empty title="אין אירועים קרובים" /> : null}
+      <ul className="stack">
+        {(events ?? []).map((event) => (
+          <li key={event.id} className="spread">
+            <span>{event.title}</span>
+            <span className="meta">{event.event_date.slice(5)}{event.event_time ? ` ${event.event_time.slice(0, 5)}` : ""}</span>
+          </li>
+        ))}
+      </ul>
+    </CollapsibleSection>
+  );
 
   return (
     <>
@@ -122,6 +162,8 @@ export default function WeekPage() {
       />
       <Alert>{error}</Alert>
       <MasonryGrid>
+        {hasClasses ? classesCard : null}
+        {hasEvents ? eventsCard : null}
         <CollapsibleSection
           storageKey="home-tasks"
           title={<h2>משימות פתוחות</h2>}
@@ -181,41 +223,8 @@ export default function WeekPage() {
           ))}
         </CollapsibleSection>
 
-        <CollapsibleSection
-          storageKey="home-classes"
-          title={<h2>חוגים היום</h2>}
-          action={<Link href="/classes">הכל</Link>}
-          className="panel"
-        >
-          {loading ? <Skeleton rows={2} /> : null}
-          {!loading && classes?.length === 0 ? <Empty title="אין חוגים היום" /> : null}
-          <ul className="stack">
-            {(classes ?? []).map((row) => (
-              <li key={row.id} className="spread">
-                <span><strong>{row.starts_at.slice(0, 5)}</strong> {row.name}</span>
-                <PersonLink id={row.person_id} name={personName(row.person_id)} />
-              </li>
-            ))}
-          </ul>
-        </CollapsibleSection>
-
-        <CollapsibleSection
-          storageKey="home-events"
-          title={<h2>אירועים</h2>}
-          action={<Link href="/events">הכל</Link>}
-          className="panel"
-        >
-          {loading ? <Skeleton rows={2} /> : null}
-          {!loading && events?.length === 0 ? <Empty title="אין אירועים קרובים" /> : null}
-          <ul className="stack">
-            {(events ?? []).map((event) => (
-              <li key={event.id} className="spread">
-                <span>{event.title}</span>
-                <span className="meta">{event.event_date.slice(5)}{event.event_time ? ` ${event.event_time.slice(0, 5)}` : ""}</span>
-              </li>
-            ))}
-          </ul>
-        </CollapsibleSection>
+        {hasClasses ? null : classesCard}
+        {hasEvents ? null : eventsCard}
       </MasonryGrid>
     </>
   );
