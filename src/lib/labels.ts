@@ -32,6 +32,12 @@ export const DRAFT_KINDS = {
   wish: "משאלה",
 } as const;
 
+export function formatDate(iso: string) {
+  const [year, month, day] = iso.slice(0, 10).split("-");
+  if (!year || !month || !day) return iso;
+  return `${day}/${month}/${year}`;
+}
+
 export function todayIso() {
   const d = new Date();
   const m = String(d.getMonth() + 1).padStart(2, "0");

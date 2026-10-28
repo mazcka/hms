@@ -7,12 +7,13 @@ import { useHousehold } from "@/components/auth-provider";
 import { CollapsibleSection } from "@/components/collapsible-section";
 import { MasonryGrid } from "@/components/masonry-grid";
 import { PlaceNav } from "@/components/place-nav";
+import { PushTest } from "@/components/push-test";
 import { Sheet } from "@/components/sheet";
 import { TaskLine } from "@/components/task-line";
 import { SwipeRow } from "@/components/swipe-row";
 import { Alert, Empty, ItemLabel, PageHead, PersonLink, Skeleton } from "@/components/ui";
 import { classDays } from "@/components/weekday-picker";
-import { EVENT_KINDS, WEEKDAYS, addDaysIso, todayIso } from "@/lib/labels";
+import { EVENT_KINDS, WEEKDAYS, addDaysIso, formatDate, todayIso } from "@/lib/labels";
 import { HMS_REFRESH, TASK_FIELDS, arrangeTasks, notifyRefresh, type Task } from "@/lib/task";
 type Item = { id: string; name: string; quantity: number | null; unit: string | null; bought: boolean; one_off: boolean; sort_order: number };
 type ShopEdit = { id: string; name: string; quantity: string; oneOff: boolean; listId: string };
@@ -227,6 +228,7 @@ export default function WeekPage() {
         lede={`${WEEKDAYS[new Date().getDay()]}, ${new Intl.DateTimeFormat("he-IL", { day: "numeric", month: "long" }).format(new Date())}`}
       />
       <Alert>{error}</Alert>
+      <PushTest />
       <MasonryGrid>
         {hasClasses ? classesCard : null}
         {hasEvents ? eventsCard : null}
@@ -317,7 +319,7 @@ export default function WeekPage() {
             <p className="meta">
               {EVENT_KINDS[peek.row.kind]}
               {" · "}
-              {new Intl.DateTimeFormat("he-IL", { weekday: "long", day: "numeric", month: "long" }).format(new Date(`${peek.row.event_date}T12:00:00`))}
+              {formatDate(peek.row.event_date)}
               {peek.row.event_time ? ` · ${peek.row.event_time.slice(0, 5)}` : ""}
             </p>
             {peek.row.person_id ? <PersonLink id={peek.row.person_id} name={personName(peek.row.person_id)} /> : null}

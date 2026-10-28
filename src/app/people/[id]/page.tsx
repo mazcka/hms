@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useHousehold } from "@/components/auth-provider";
 import { CollapsibleSection } from "@/components/collapsible-section";
 import { Alert, Empty, Loader, PageHead } from "@/components/ui";
-import { EVENT_KINDS, RELATIONS, WEEKDAYS, WISH_STATUS } from "@/lib/labels";
+import { EVENT_KINDS, RELATIONS, WEEKDAYS, WISH_STATUS, formatDate } from "@/lib/labels";
 
 type Person = { id: string; name: string; relation: keyof typeof RELATIONS };
 type ClassRow = { id: string; name: string; weekday: number; weekdays: number[] | null; starts_at: string; place: string | null };
@@ -62,7 +62,7 @@ export default function PersonPage() {
         {events?.length === 0 ? <Empty title="אין אירועים" /> : null}
         <ul className="stack">
           {events?.map((row) => (
-            <li key={row.id}>{row.event_date} · {row.title}</li>
+            <li key={row.id}>{formatDate(row.event_date)} · {row.title}</li>
           ))}
         </ul>
       </CollapsibleSection>

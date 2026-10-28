@@ -9,7 +9,7 @@ import { MenuItem, RowMenu } from "@/components/menu";
 import { Sheet } from "@/components/sheet";
 import { SwipeRow } from "@/components/swipe-row";
 import { Alert, Empty, PageHead, PersonLink, Skeleton } from "@/components/ui";
-import { EVENT_KINDS } from "@/lib/labels";
+import { EVENT_KINDS, formatDate } from "@/lib/labels";
 
 type Person = { id: string; name: string };
 type EventRow = {
@@ -97,7 +97,7 @@ export default function EventsPage() {
       title: row.title,
       kind: row.kind,
       event_date: row.event_date,
-      event_time: row.event_time?.slice(0, 5) ?? "",
+      event_time: row.event_time ?? "",
       person_id: row.person_id ?? "",
       place: row.place ?? "",
       notes: row.notes ?? "",
@@ -199,8 +199,8 @@ export default function EventsPage() {
                 <div className="row-open">
                   <span>{row.title}</span>
                   <span className="meta">
-                    {EVENT_KINDS[row.kind]} {row.event_date}
-                    {row.event_time ? ` ${row.event_time.slice(0, 5)}` : ""}
+                    {EVENT_KINDS[row.kind]} · {formatDate(row.event_date)}
+                    {row.event_time ? ` · ${row.event_time.slice(0, 5)}` : ""}
                     {row.person_id ? <PersonLink id={row.person_id} name={people.find((p) => p.id === row.person_id)?.name ?? ""} /> : null}
                   </span>
                 </div>
