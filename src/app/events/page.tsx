@@ -1,6 +1,6 @@
 "use client";
 
-import { Pencil, Trash2 } from "lucide-react";
+import { Calendar, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useHousehold } from "@/components/auth-provider";
 import { CollapsibleSection } from "@/components/collapsible-section";
@@ -195,6 +195,7 @@ export default function EventsPage() {
                   { label: "מחיקה", icon: <Trash2 aria-hidden="true" />, onSelect: () => remove(row.id), tone: "danger" },
                 ]}
               >
+                <span className="row-mark" aria-hidden="true"><Calendar /></span>
                 <div className="row-open">
                   <span>{row.title}</span>
                   <span className="meta">
@@ -204,8 +205,8 @@ export default function EventsPage() {
                   </span>
                 </div>
                 <RowMenu>
-                  <MenuItem onSelect={() => startEdit(row)}>עריכה</MenuItem>
-                  <MenuItem danger onSelect={() => remove(row.id)}>מחיקה</MenuItem>
+                  <MenuItem icon={<Pencil aria-hidden="true" />} onSelect={() => startEdit(row)}>עריכה</MenuItem>
+                  <MenuItem danger icon={<Trash2 aria-hidden="true" />} onSelect={() => remove(row.id)}>מחיקה</MenuItem>
                 </RowMenu>
               </SwipeRow>
             ))}

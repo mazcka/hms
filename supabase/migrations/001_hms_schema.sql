@@ -17,7 +17,7 @@ create table public.hms_people (
   id uuid primary key default gen_random_uuid(),
   household_id uuid not null references public.hms_households (id) on delete cascade,
   name text not null,
-  relation text not null check (relation in ('daughter', 'classmate', 'other')),
+  relation text not null check (relation in ('daughter', 'partner', 'other')),
   created_at timestamptz not null default now()
 );
 

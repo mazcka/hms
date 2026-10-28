@@ -8,7 +8,7 @@ export const TASK_STATUS = {
 
 export const RELATIONS = {
   daughter: "בת",
-  classmate: "חברה לכיתה",
+  partner: "בן/בת זוג",
   other: "אחר",
 } as const;
 

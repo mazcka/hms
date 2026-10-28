@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Circle, Gift, Plus, Trash2, X } from "lucide-react";
+import { Check, Circle, Flag, Gift, Pencil, Plus, ShoppingBag, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useHousehold } from "@/components/auth-provider";
@@ -39,6 +39,13 @@ export default function ShopPage() {
   const [pending, setPending] = useState(false);
   const [addingList, setAddingList] = useState(false);
   const [addingItems, setAddingItems] = useState(false);
+  const [editing, setEditing] = useState<{
+    id: string;
+    name: string;
+    quantity: string;
+    oneOff: boolean;
+    listId: string;
+  } | null>(null);
   const listsRef = useRef(lists);
   listsRef.current = lists;
   const listsRoot = useRef<HTMLDivElement>(null);
@@ -125,6 +132,43 @@ export default function ShopPage() {
     else {
       setDraft("");
       setAddingItems(false);
+      await load();
+    }
+  }
+
+  function startEdit(item: Item, ownerId: string) {
+    setEditing({
+      id: item.id,
+      name: item.name,
+      quantity: item.quantity == null ? "" : String(item.quantity),
+      oneOff: item.one_off,
+      listId: ownerId,
+    });
+  }
+
+  async function saveEdit(event: FormEvent) {
+    event.preventDefault();
+    if (!gate || !editing) return;
+    const name = editing.name.trim();
+    const rawQuantity = editing.quantity.replace(",", ".").trim();
+    const quantity = rawQuantity === "" ? null : Number(rawQuantity);
+    if (!name || !editing.listId || (quantity != null && !Number.isFinite(quantity))) {
+      setError("חסרים שם או קטגוריה.");
+      return;
+    }
+    setPending(true);
+    setError("");
+    const { error: writeError } = await gate.supabase.from("hms_shop_items").update({
+      name,
+      quantity,
+      one_off: editing.oneOff,
+      list_id: editing.listId,
+    }).eq("id", editing.id);
+    setPending(false);
+    if (writeError) setError(writeError.message);
+    else {
+      setEditing(null);
+      notifyRefresh();
       await load();
     }
   }
@@ -256,6 +300,46 @@ export default function ShopPage() {
           <button className="btn btn-primary" disabled={pending} type="submit">הוספת פריטים</button>
         </form>
       </Sheet>
+      <Sheet open={Boolean(editing)} title="עריכת פריט" onClose={() => setEditing(null)}>
+        {editing ? (
+          <form className="stack" onSubmit={saveEdit}>
+            <label>
+              שם
+              <input
+                value={editing.name}
+                onChange={(e) => setEditing({ ...editing, name: e.target.value })}
+                required
+                autoFocus
+              />
+            </label>
+            <label>
+              כמות
+              <input
+                inputMode="decimal"
+                value={editing.quantity}
+                onChange={(e) => setEditing({ ...editing, quantity: e.target.value })}
+              />
+            </label>
+            <label>
+              קטגוריה
+              <select value={editing.listId} onChange={(e) => setEditing({ ...editing, listId: e.target.value })}>
+                {(lists ?? []).map((list) => (
+                  <option key={list.id} value={list.id}>{list.name}</option>
+                ))}
+              </select>
+            </label>
+            <label className="check">
+              <input
+                type="checkbox"
+                checked={editing.oneOff}
+                onChange={(e) => setEditing({ ...editing, oneOff: e.target.checked })}
+              />
+              חד-פעמי
+            </label>
+            <button className="btn btn-primary" disabled={pending} type="submit">שמירת שינוי</button>
+          </form>
+        ) : null}
+      </Sheet>
       {addingList ? (
         <div className="modal-back" role="presentation" onClick={() => setAddingList(false)}>
           <form className="modal" role="dialog" aria-modal="true" aria-label="קטגוריה חדשה" onClick={(e) => e.stopPropagation()} onSubmit={addList}>
@@ -298,8 +382,8 @@ export default function ShopPage() {
               }
               action={
                 <RowMenu label={`פעולות ${list.name}`}>
-                  <MenuItem onSelect={() => endSession(list.id)}>סיום סשן</MenuItem>
-                  <MenuItem danger onSelect={() => removeList(list.id)}>מחיקת קטגוריה</MenuItem>
+                  <MenuItem icon={<Flag aria-hidden="true" />} onSelect={() => endSession(list.id)}>סיום סשן</MenuItem>
+                  <MenuItem danger icon={<Trash2 aria-hidden="true" />} onSelect={() => removeList(list.id)}>מחיקת קטגוריה</MenuItem>
                 </RowMenu>
               }
             >
@@ -320,27 +404,24 @@ export default function ShopPage() {
                       icon: item.bought ? <Circle aria-hidden="true" /> : <Check aria-hidden="true" />,
                       onSelect: () => toggle(item),
                     }]}
-                    endActions={[{
-                      label: "מחיקה",
-                      icon: <Trash2 aria-hidden="true" />,
-                      onSelect: () => removeItem(item),
-                      tone: "danger",
-                    }]}
+                    endActions={[
+                      { label: "עריכה", icon: <Pencil aria-hidden="true" />, onSelect: () => startEdit(item, list.id) },
+                      {
+                        label: "מחיקה",
+                        icon: <Trash2 aria-hidden="true" />,
+                        onSelect: () => removeItem(item),
+                        tone: "danger",
+                      },
+                    ]}
                   >
-                    <IconButton
-                      label={item.bought ? `בטל סימון של ${item.name}` : `סמן את ${item.name} כנקנה`}
-                      aria-pressed={item.bought}
-                      onClick={() => toggle(item)}
-                    >
-                      {item.bought ? <Check size={18} aria-hidden="true" /> : <Circle size={18} aria-hidden="true" />}
-                    </IconButton>
-                    <div className="row-open shop-pair">
+                    <span className="row-mark" aria-hidden="true"><ShoppingBag /></span>
+                    <button className="row-open shop-pair" type="button" onClick={() => startEdit(item, list.id)}>
                       <span className="shop-amount">{formatAmount(item) || "–"}</span>
                       <span className={item.bought ? "bought" : undefined}>
                         <ItemLabel value={item.name} />
                         {item.one_off ? <span className="meta"> חד-פעמי</span> : null}
                       </span>
-                    </div>
+                    </button>
                     <DragHandle
                       label={`סידור ${item.name}`}
                       onPointerDown={(event) => drag.start(
@@ -355,7 +436,8 @@ export default function ShopPage() {
                       )}
                     />
                     <RowMenu label={`פעולות עבור ${item.name}`}>
-                      <MenuItem danger onSelect={() => removeItem(item)}>מחיקה</MenuItem>
+                      <MenuItem icon={<Pencil aria-hidden="true" />} onSelect={() => startEdit(item, list.id)}>עריכה</MenuItem>
+                      <MenuItem danger icon={<Trash2 aria-hidden="true" />} onSelect={() => removeItem(item)}>מחיקה</MenuItem>
                     </RowMenu>
                   </SwipeRow>
                 ))}

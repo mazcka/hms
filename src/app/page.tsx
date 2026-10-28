@@ -1,8 +1,7 @@
 "use client";
 
-import { Check, Circle } from "lucide-react";
+import { Calendar, CalendarDays, Check, ShoppingBag } from "lucide-react";
 import Link from "next/link";
-import { IconButton } from "@/components/menu";
 import { useEffect, useState } from "react";
 import { useHousehold } from "@/components/auth-provider";
 import { CollapsibleSection } from "@/components/collapsible-section";
@@ -127,7 +126,10 @@ export default function WeekPage() {
       <ul className="stack">
         {(classes ?? []).map((row) => (
           <li key={row.id} className="spread">
-            <span><strong>{row.starts_at.slice(0, 5)}</strong> {row.name}</span>
+            <span className="row-line">
+              <span className="row-mark" aria-hidden="true"><CalendarDays /></span>
+              <span><strong>{row.starts_at.slice(0, 5)}</strong> {row.name}</span>
+            </span>
             <PersonLink id={row.person_id} name={personName(row.person_id)} />
           </li>
         ))}
@@ -146,7 +148,10 @@ export default function WeekPage() {
       <ul className="stack">
         {(events ?? []).map((event) => (
           <li key={event.id} className="spread">
-            <span>{event.title}</span>
+            <span className="row-line">
+              <span className="row-mark" aria-hidden="true"><Calendar /></span>
+              <span>{event.title}</span>
+            </span>
             <span className="meta">{event.event_date.slice(5)}{event.event_time ? ` ${event.event_time.slice(0, 5)}` : ""}</span>
           </li>
         ))}
@@ -209,9 +214,7 @@ export default function WeekPage() {
                       onSelect: () => toggleBought(item),
                     }]}
                   >
-                    <IconButton label={`סמן את ${item.name} כנקנה`} onClick={() => toggleBought(item)}>
-                      <Circle size={18} aria-hidden="true" />
-                    </IconButton>
+                    <span className="row-mark" aria-hidden="true"><ShoppingBag /></span>
                     <div className="row-open shop-pair">
                       <span className="shop-amount">{formatAmount(item) || "–"}</span>
                       <ItemLabel value={item.name} />

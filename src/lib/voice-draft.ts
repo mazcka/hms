@@ -1,5 +1,5 @@
 export type DraftKind = "task" | "shop" | "class" | "event" | "wish";
-export type Relation = "daughter" | "classmate" | "other";
+export type Relation = "daughter" | "partner" | "other";
 export type EventKind = "birthday" | "appointment" | "other";
 
 export type ShopItemDraft = {
@@ -138,7 +138,7 @@ export function draftFromModel(
     })
     .filter((x): x is ShopItemDraft => Boolean(x));
 
-  const relation = (["daughter", "classmate", "other"] as const).includes(
+  const relation = (["daughter", "partner", "other"] as const).includes(
     first.relation as Relation,
   )
     ? (first.relation as Relation)

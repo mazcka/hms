@@ -60,7 +60,8 @@ export function SwipeRow({
 
   function begin(event: ReactPointerEvent<HTMLDivElement>) {
     if (event.pointerType === "mouse" && event.button !== 0) return;
-    if ((event.target as HTMLElement).closest("[data-drag-handle]")) return;
+    const target = event.target as HTMLElement;
+    if (target.closest("[data-drag-handle], button, a, input, textarea, select")) return;
     origin.current = { x: event.clientX, y: event.clientY, offset };
     horizontal.current = null;
     moved.current = false;

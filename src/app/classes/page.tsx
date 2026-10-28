@@ -1,6 +1,6 @@
 "use client";
 
-import { Pause, Pencil, Play, Trash2 } from "lucide-react";
+import { CalendarDays, Pause, Pencil, Play, Trash2, UserRound } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useHousehold } from "@/components/auth-provider";
 import { CollapsibleSection } from "@/components/collapsible-section";
@@ -174,12 +174,13 @@ export default function ClassesPage() {
                     tone: "danger",
                   }]}
                 >
+                  <span className="row-mark" aria-hidden="true"><UserRound /></span>
                   <div className="row-open">
                     <span>{person.name}</span>
                     <span className="meta">{RELATIONS[person.relation]}</span>
                   </div>
                   <RowMenu label={`פעולות ${person.name}`}>
-                    <MenuItem danger onSelect={() => removePerson(person.id)}>מחיקה</MenuItem>
+                    <MenuItem danger icon={<Trash2 aria-hidden="true" />} onSelect={() => removePerson(person.id)}>מחיקה</MenuItem>
                   </RowMenu>
                 </SwipeRow>
             ))}
@@ -256,17 +257,21 @@ export default function ClassesPage() {
                     { label: "מחיקה", icon: <Trash2 aria-hidden="true" />, onSelect: () => remove(row.id), tone: "danger" },
                   ]}
                 >
-                  <span>
-                    {row.starts_at.slice(0, 5)}
-                    {row.ends_at ? `–${row.ends_at.slice(0, 5)}` : ""} · {row.name}
-                    {row.place ? ` · ${row.place}` : ""}
-                    {row.active ? "" : " · מושהה"}{" "}
-                    <PersonLink id={row.person_id} name={people.find((p) => p.id === row.person_id)?.name ?? ""} />
-                  </span>
+                  <span className="row-mark" aria-hidden="true"><CalendarDays /></span>
+                  <div className="row-open">
+                    <span>{row.name}</span>
+                    <span className="meta">
+                      {row.starts_at.slice(0, 5)}
+                      {row.ends_at ? `–${row.ends_at.slice(0, 5)}` : ""}
+                      {row.place ? ` · ${row.place}` : ""}
+                      {row.active ? "" : " · מושהה"}{" "}
+                      <PersonLink id={row.person_id} name={people.find((p) => p.id === row.person_id)?.name ?? ""} />
+                    </span>
+                  </div>
                   <RowMenu>
-                    <MenuItem onSelect={() => startEdit(row)}>עריכה</MenuItem>
-                    <MenuItem onSelect={() => toggle(row)}>{row.active ? "השהיה" : "הפעלה"}</MenuItem>
-                    <MenuItem danger onSelect={() => remove(row.id)}>מחיקה</MenuItem>
+                    <MenuItem icon={<Pencil aria-hidden="true" />} onSelect={() => startEdit(row)}>עריכה</MenuItem>
+                    <MenuItem icon={row.active ? <Pause aria-hidden="true" /> : <Play aria-hidden="true" />} onSelect={() => toggle(row)}>{row.active ? "השהיה" : "הפעלה"}</MenuItem>
+                    <MenuItem danger icon={<Trash2 aria-hidden="true" />} onSelect={() => remove(row.id)}>מחיקה</MenuItem>
                   </RowMenu>
                 </SwipeRow>
               ))}
