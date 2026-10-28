@@ -6,6 +6,7 @@ import { IconButton, Tip } from "@/components/menu";
 import { useEffect, useState } from "react";
 import { useHousehold } from "@/components/auth-provider";
 import { CollapsibleSection } from "@/components/collapsible-section";
+import { MasonryGrid } from "@/components/masonry-grid";
 import { TaskLine } from "@/components/task-line";
 import { SwipeRow } from "@/components/swipe-row";
 import { Alert, Empty, PageHead, PersonLink, Skeleton } from "@/components/ui";
@@ -127,7 +128,7 @@ export default function WeekPage() {
         }
       />
       <Alert>{error}</Alert>
-      <div className="bento">
+      <MasonryGrid>
         <CollapsibleSection
           storageKey="home-tasks"
           title={<h2>משימות פתוחות</h2>}
@@ -217,7 +218,7 @@ export default function WeekPage() {
             ))}
           </ul>
         </CollapsibleSection>
-      </div>
+      </MasonryGrid>
     </>
   );
 }
