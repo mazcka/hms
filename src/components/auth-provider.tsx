@@ -11,7 +11,6 @@ import {
   type ReactNode,
 } from "react";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
-import { Tip } from "@/components/menu";
 import { QuickAdd } from "@/components/quick-add";
 import { TaskEditorProvider } from "@/components/task-editor";
 import { BrandMark, Loader } from "@/components/ui";
@@ -39,7 +38,7 @@ export function useHousehold() {
 }
 
 const NAV = [
-  { href: "/", label: "השבוע", icon: "home" },
+  { href: "/", label: "היום", icon: "home" },
   { href: "/tasks", label: "משימות", icon: "check" },
   { href: "/shop", label: "קניות", icon: "bag" },
 ] as const;
@@ -161,15 +160,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {showNav ? (
         <nav className="nav" aria-label="ראשי">
           {NAV.map((item) => (
-            <Tip key={item.href} label={item.label}>
-              <Link
-                href={item.href}
-                aria-label={item.label}
-                aria-current={pathname === item.href ? "page" : undefined}
-              >
-                <NavIcon name={item.icon} />
-              </Link>
-            </Tip>
+            <Link
+              key={item.href}
+              href={item.href}
+              aria-current={pathname === item.href ? "page" : undefined}
+            >
+              <NavIcon name={item.icon} />
+              <span>{item.label}</span>
+            </Link>
           ))}
         </nav>
       ) : null}
@@ -203,7 +201,7 @@ function SignedOut() {
   return (
     <section className="card stack">
       <BrandHeading />
-      <p>כדי לראות את השבוע צריך להתחבר.</p>
+      <p>כדי לראות את היום צריך להתחבר.</p>
       <Link className="btn btn-primary" href="/login">
         כניסה
       </Link>

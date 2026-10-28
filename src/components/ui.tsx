@@ -18,7 +18,7 @@ export function PageHead({
     <header className="page-head">
       <div className="page-title">
         {pathname !== "/" ? (
-          <Link className="home-back" href="/" aria-label="השבוע">
+          <Link className="home-back" href="/" aria-label="היום">
             <BrandMark />
           </Link>
         ) : (

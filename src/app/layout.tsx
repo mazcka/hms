@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Assistant, Frank_Ruhl_Libre } from "next/font/google";
+import { Assistant, Rubik } from "next/font/google";
 import { AuthProvider } from "@/components/auth-provider";
 import { TooltipProvider } from "@/components/menu";
 import "./globals.css";
@@ -10,9 +10,9 @@ const assistant = Assistant({
   variable: "--font-ui",
 });
 
-const frank = Frank_Ruhl_Libre({
+const display = Rubik({
   subsets: ["hebrew", "latin"],
-  weight: ["700"],
+  weight: ["600", "700"],
   variable: "--font-display",
 });
 
@@ -44,7 +44,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="he" dir="rtl" className={`${assistant.variable} ${frank.variable}`}>
+    <html lang="he" dir="rtl" className={`${assistant.variable} ${display.variable}`}>
       <body>
         <TooltipProvider>
           <AuthProvider>{children}</AuthProvider>

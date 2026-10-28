@@ -157,7 +157,7 @@ export default function WeekPage() {
   return (
     <>
       <PageHead
-        title="השבוע"
+        title="היום"
         lede={`${WEEKDAYS[new Date().getDay()]}, ${new Intl.DateTimeFormat("he-IL", { day: "numeric", month: "long" }).format(new Date())}`}
       />
       <Alert>{error}</Alert>

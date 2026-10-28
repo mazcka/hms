@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, X } from "lucide-react";
+import { CalendarDays, CheckSquare, Gift, Mic, Plus, ShoppingBag, Sparkles, X, type LucideIcon } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { IconButton } from "@/components/menu";
 import { useRouter } from "next/navigation";
@@ -15,12 +15,12 @@ type Kind = "task" | "shop" | "class" | "event" | "wish";
 type Person = { id: string; name: string };
 type List = { id: string; name: string };
 
-const KINDS: { id: Kind; label: string }[] = [
-  { id: "task", label: "משימה" },
-  { id: "shop", label: "קניות" },
-  { id: "class", label: "חוג" },
-  { id: "event", label: "אירוע" },
-  { id: "wish", label: "משאלה" },
+const KINDS: { id: Kind; label: string; hint: string; icon: LucideIcon }[] = [
+  { id: "task", label: "משימה", hint: "משהו שצריך לעשות", icon: CheckSquare },
+  { id: "shop", label: "קניות", hint: "פריטים לרשימה", icon: ShoppingBag },
+  { id: "class", label: "חוג", hint: "שעה קבועה בשבוע", icon: CalendarDays },
+  { id: "event", label: "אירוע", hint: "תאריך ביומן הבית", icon: Sparkles },
+  { id: "wish", label: "משאלה", hint: "משהו שרוצים", icon: Gift },
 ];
 
 export function QuickAdd() {
@@ -180,6 +180,9 @@ export function QuickAdd() {
   return (
     <>
       {menu ? (
+        <button className="quick-scrim" type="button" aria-label="סגירת יצירה" onClick={() => setMenu(false)} />
+      ) : null}
+      {menu ? (
         <div className="quick-menu" role="menu" aria-label="יצירה מהירה">
           <button
             className="quick-choice"
@@ -190,27 +193,38 @@ export function QuickAdd() {
               router.push("/voice");
             }}
           >
-            קול
+            <span className="quick-choice-icon" aria-hidden="true"><Mic size={18} /></span>
+            <span className="quick-choice-copy">
+              <strong>קול</strong>
+              <span>להוסיף בדיבור</span>
+            </span>
           </button>
-          {KINDS.map((item) => (
-            <button
-              key={item.id}
-              className="quick-choice"
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setKind(item.id);
-                setMenu(false);
-                setTitle("");
-                setExtra("");
-                setEndsAt("");
-                setPlace("");
-                setError("");
-              }}
-            >
-              {item.label}
-            </button>
-          ))}
+          {KINDS.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                className="quick-choice"
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setKind(item.id);
+                  setMenu(false);
+                  setTitle("");
+                  setExtra("");
+                  setEndsAt("");
+                  setPlace("");
+                  setError("");
+                }}
+              >
+                <span className="quick-choice-icon" aria-hidden="true"><Icon size={18} /></span>
+                <span className="quick-choice-copy">
+                  <strong>{item.label}</strong>
+                  <span>{item.hint}</span>
+                </span>
+              </button>
+            );
+          })}
         </div>
       ) : null}
       <IconButton
