@@ -17,14 +17,14 @@ const frank = Frank_Ruhl_Libre({
 });
 
 export const metadata: Metadata = {
-  title: "בית",
-  description: "ניהול משק הבית לזוג",
-  applicationName: "בית",
+  title: "מצקה",
+  description: "ניהול משק הבית",
+  applicationName: "מצקה",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "בית",
+    title: "מצקה",
   },
   icons: { apple: "/icon-180.png" },
 };

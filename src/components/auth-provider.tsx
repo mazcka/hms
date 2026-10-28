@@ -14,6 +14,7 @@ import type { Session, SupabaseClient } from "@supabase/supabase-js";
 import { Tip } from "@/components/menu";
 import { QuickAdd } from "@/components/quick-add";
 import { TaskEditorProvider } from "@/components/task-editor";
+import { Loader } from "@/components/ui";
 import { getSupabase } from "@/lib/supabase";
 
 export type Member = {
@@ -141,7 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <GateContext.Provider value={gate}>
       <div className="app-main">
         {!supabase ? <SetupMissing /> : null}
-        {supabase && !ready ? <p>טוען…</p> : null}
+        {supabase && !ready ? <Loader /> : null}
         {supabase && ready && !session && pathname !== "/login" ? <SignedOut /> : null}
         {supabase && ready && session && !member && pathname !== "/login" ? (
           <NeedsHousehold userId={session.user.id} error={error} />
@@ -185,7 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 function SetupMissing() {
   return (
     <section className="card stack">
-      <h1>בית</h1>
+      <h1>מצקה</h1>
       <p>
         חסרים מפתחות Supabase. העתיקו את <code>.env.example</code> אל <code>.env.local</code> ומלאו
         את <code>NEXT_PUBLIC_SUPABASE_URL</code> ואת <code>NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY</code>.
@@ -198,7 +199,7 @@ function SetupMissing() {
 function SignedOut() {
   return (
     <section className="card stack">
-      <h1>בית</h1>
+      <h1>מצקה</h1>
       <p>כדי לראות את השבוע צריך להתחבר.</p>
       <Link className="btn btn-primary" href="/login">
         כניסה

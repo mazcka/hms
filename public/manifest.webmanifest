@@ -1,7 +1,7 @@
 {
-  "name": "בית",
-  "short_name": "בית",
-  "description": "ניהול משק הבית לזוג",
+  "name": "מצקה",
+  "short_name": "מצקה",
+  "description": "ניהול משק הבית",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

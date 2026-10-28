@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useHousehold } from "@/components/auth-provider";
 import { CollapsibleSection } from "@/components/collapsible-section";
-import { Alert, Empty } from "@/components/ui";
+import { Alert, Empty, Loader } from "@/components/ui";
 import { EVENT_KINDS, RELATIONS, WEEKDAYS, WISH_STATUS } from "@/lib/labels";
 
 type Person = { id: string; name: string; relation: keyof typeof RELATIONS };
@@ -43,7 +43,7 @@ export default function PersonPage() {
   }, [gate, id]);
 
   if (!gate) return null;
-  if (!person && !error && !classes) return <p>טוען…</p>;
+  if (!person && !error && !classes) return <Loader />;
   if (!person) return <Empty title="האדם לא נמצא" />;
 
   return (

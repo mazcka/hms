@@ -1,8 +1,8 @@
 "use client";
 
-import { Check, Circle, Gift } from "lucide-react";
+import { Check, Circle } from "lucide-react";
 import Link from "next/link";
-import { IconButton, Tip } from "@/components/menu";
+import { IconButton } from "@/components/menu";
 import { useEffect, useState } from "react";
 import { useHousehold } from "@/components/auth-provider";
 import { CollapsibleSection } from "@/components/collapsible-section";
@@ -71,7 +71,7 @@ export default function WeekPage() {
       if (!event.remind_day_before || event.event_date !== tomorrow) continue;
       const key = `hms-remind-${event.id}-${tomorrow}`;
       if (localStorage.getItem(key)) continue;
-      new Notification("בית", { body: `מחר: ${event.title}` });
+      new Notification("מצקה", { body: `מחר: ${event.title}` });
       localStorage.setItem(key, "1");
     }
   }, [events]);
@@ -118,14 +118,7 @@ export default function WeekPage() {
     <>
       <PageHead
         title="השבוע"
-        lede={WEEKDAYS[new Date().getDay()]}
-        action={
-          <Tip label="משאלות">
-            <Link className="icon-btn home-link" href="/wishes" aria-label="משאלות">
-              <Gift size={18} aria-hidden="true" />
-            </Link>
-          </Tip>
-        }
+        lede={`${WEEKDAYS[new Date().getDay()]}, ${new Intl.DateTimeFormat("he-IL", { day: "numeric", month: "long" }).format(new Date())}`}
       />
       <Alert>{error}</Alert>
       <MasonryGrid>
@@ -157,8 +150,13 @@ export default function WeekPage() {
             <Empty title="הרשימה ריקה" action={<Link className="btn btn-quiet" href="/shop">לקניות</Link>} />
           ) : null}
           {visibleShop.map((list) => (
-            <div key={list.id}>
-              <p className="meta">{list.name}</p>
+            <CollapsibleSection
+              key={list.id}
+              nested
+              storageKey={`home-shop-${list.id}`}
+              title={<span className="meta">{list.name}</span>}
+              action={<span className="meta">{list.items.length}</span>}
+            >
               <ul className="stack">
                 {list.items.map((item) => (
                   <SwipeRow
@@ -179,7 +177,7 @@ export default function WeekPage() {
                   </SwipeRow>
                 ))}
               </ul>
-            </div>
+            </CollapsibleSection>
           ))}
         </CollapsibleSection>
 

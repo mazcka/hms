@@ -11,6 +11,7 @@ export function CollapsibleSection({
   children,
   defaultOpen = true,
   className = "",
+  nested = false,
 }: {
   storageKey: string;
   title: ReactNode;
@@ -19,6 +20,7 @@ export function CollapsibleSection({
   children: ReactNode;
   defaultOpen?: boolean;
   className?: string;
+  nested?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const contentId = useId();
@@ -37,7 +39,7 @@ export function CollapsibleSection({
   }
 
   return (
-    <section className={`card collapsible-section ${open ? "collapsible-section-open" : ""} ${className}`.trim()}>
+    <section className={`${nested ? "collapsible-nested" : "card collapsible-section"} ${open ? "collapsible-section-open" : ""} ${className}`.trim()}>
       <div className="collapsible-head">
         {handle}
         <button

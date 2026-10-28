@@ -1,9 +1,9 @@
 "use client";
 
 import {
+  useEffect,
   useRef,
   useState,
-  type CSSProperties,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
@@ -31,14 +31,32 @@ export function SwipeRow({
   className?: string;
   sortable?: boolean;
 }) {
+  const rowRef = useRef<HTMLLIElement>(null);
   const [offset, setOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
+  const [rowWidth, setRowWidth] = useState(0);
   const origin = useRef({ x: 0, y: 0, offset: 0 });
   const horizontal = useRef<boolean | null>(null);
   const moved = useRef(false);
 
-  const startWidth = startActions.length * ACTION_WIDTH;
-  const endWidth = endActions.length * ACTION_WIDTH;
+  useEffect(() => {
+    const row = rowRef.current;
+    if (!row) return;
+    const measure = () => setRowWidth(row.clientWidth);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(row);
+    return () => observer.disconnect();
+  }, []);
+
+  function trayLimit(count: number) {
+    if (!count) return 0;
+    const natural = count * ACTION_WIDTH;
+    return rowWidth ? Math.min(natural, rowWidth) : natural;
+  }
+
+  const startWidth = trayLimit(startActions.length);
+  const endWidth = trayLimit(endActions.length);
 
   function begin(event: ReactPointerEvent<HTMLDivElement>) {
     if (event.pointerType === "mouse" && event.button !== 0) return;
@@ -77,17 +95,23 @@ export function SwipeRow({
     await action.onSelect();
   }
 
-  function actions(items: SwipeAction[], side: "start" | "end") {
+  function actions(items: SwipeAction[], side: "start" | "end", width: number) {
     if (!items.length) return null;
+    const open = side === "start" ? offset > 0 : offset < 0;
     return (
-      <div className={`swipe-actions swipe-actions-${side}`} aria-label={side === "start" ? "פעולות בהחלקה ימינה" : "פעולות בהחלקה שמאלה"}>
+      <div
+        className={`swipe-actions swipe-actions-${side}`}
+        style={{ width }}
+        aria-hidden={open ? undefined : true}
+        aria-label={side === "start" ? "פעולות בהחלקה ימינה" : "פעולות בהחלקה שמאלה"}
+      >
         {items.map((action) => (
           <button
             className={`swipe-action swipe-action-${action.tone ?? "primary"}`}
             key={action.label}
             type="button"
             onClick={() => run(action)}
-            tabIndex={offset === 0 || Math.sign(offset) !== (side === "start" ? 1 : -1) ? -1 : 0}
+            tabIndex={open ? 0 : -1}
             aria-label={action.label}
           >
             {action.icon}
@@ -98,14 +122,16 @@ export function SwipeRow({
     );
   }
 
+  const startReveal = offset > 0 ? offset : 0;
+  const endReveal = offset < 0 ? -offset : 0;
+
   return (
     <li
+      ref={rowRef}
       data-drag-row={sortable ? "" : undefined}
-      className={`swipe-row ${offset ? "swipe-row-open" : ""} ${className}`.trim()}
-      style={{ "--swipe-offset": `${offset}px` } as CSSProperties}
+      className={`swipe-row ${offset ? "swipe-row-open" : ""} ${dragging ? "swipe-row-dragging" : ""} ${className}`.trim()}
     >
-      {actions(startActions, "start")}
-      {actions(endActions, "end")}
+      {actions(startActions, "start", startReveal)}
       <div
         className={`swipe-content ${dragging ? "swipe-content-dragging" : ""}`}
         onPointerDown={begin}
@@ -122,6 +148,7 @@ export function SwipeRow({
       >
         {children}
       </div>
+      {actions(endActions, "end", endReveal)}
     </li>
   );
 }

@@ -50,8 +50,9 @@ export default function LoginPage() {
 
   return (
     <section className="card">
+      <p className="eyebrow">מצקה</p>
       <h1>{mode === "in" ? "כניסה" : "חשבון חדש"}</h1>
-      <p className="lede">שני בני הבית נכנסים עם אימייל וסיסמה.</p>
+      <p className="lede">כניסה רק לשני בני הזוג, עם אימייל וסיסמה.</p>
       <form className="stack" onSubmit={onSubmit}>
         <Alert>{error}</Alert>
         {info ? <p className="note">{info}</p> : null}

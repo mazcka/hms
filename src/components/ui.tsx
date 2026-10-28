@@ -21,6 +21,15 @@ export function PageHead({
   );
 }
 
+export function Loader({ label = "טוען" }: { label?: string }) {
+  return (
+    <div className="loader" role="status" aria-live="polite">
+      <span className="loader-ring" aria-hidden="true" />
+      <span className="loader-label">{label}</span>
+    </div>
+  );
+}
+
 export function Skeleton({ rows = 3 }: { rows?: number }) {
   return (
     <div className="skeleton" aria-busy="true" aria-label="טוען">

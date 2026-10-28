@@ -1,11 +1,12 @@
 "use client";
 
-import { Check, Circle, Plus, Trash2, X } from "lucide-react";
+import { Check, Circle, Gift, Plus, Trash2, X } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useHousehold } from "@/components/auth-provider";
 import { CollapsibleSection } from "@/components/collapsible-section";
 import { DragHandle, reorder, useDragSort } from "@/components/drag-handle";
-import { IconButton, MenuItem, RowMenu } from "@/components/menu";
+import { IconButton, MenuItem, RowMenu, Tip } from "@/components/menu";
 import { Sheet } from "@/components/sheet";
 import { SwipeRow } from "@/components/swipe-row";
 import { Alert, Empty, ItemLabel, PageHead, Skeleton } from "@/components/ui";
@@ -218,42 +219,42 @@ export default function ShopPage() {
       <PageHead title="קניות" action={<button className="btn btn-primary" type="button" onClick={() => setAddingItems(true)}>פריטים</button>} />
       <Alert>{error}</Alert>
       <Sheet open={addingItems} title="פריטים חדשים" onClose={() => setAddingItems(false)}>
-      <form className="stack" onSubmit={addItem}>
-        <div className="category-pick">
+        <form className="stack" onSubmit={addItem}>
+          <div className="category-pick">
+            <label>
+              קטגוריה
+              <select value={listId} onChange={(e) => setListId(e.target.value)}>
+                <option value="">בחירה</option>
+                {(lists ?? []).map((list) => (
+                  <option key={list.id} value={list.id}>{list.name}</option>
+                ))}
+              </select>
+            </label>
+            <IconButton label="קטגוריה חדשה" onClick={() => { setError(""); setAddingList(true); }}>
+              <Plus size={18} aria-hidden="true" />
+            </IconButton>
+          </div>
           <label>
-            קטגוריה
-            <select value={listId} onChange={(e) => setListId(e.target.value)}>
-              <option value="">בחירה</option>
-              {(lists ?? []).map((list) => (
-                <option key={list.id} value={list.id}>{list.name}</option>
-              ))}
-            </select>
+            פריטים
+            <textarea
+              value={draft}
+              rows={6}
+              placeholder={"חלב\nביצים\n5 פיתות\n8 מלפפונים"}
+              onChange={(e) => setDraft(e.target.value)}
+            />
           </label>
-          <IconButton label="קטגוריה חדשה" onClick={() => { setError(""); setAddingList(true); }}>
-            <Plus size={18} aria-hidden="true" />
-          </IconButton>
-        </div>
-        <label>
-          פריטים
-          <textarea
-            value={draft}
-            rows={6}
-            placeholder={"חלב\nביצים\n5 פיתות\n8 מלפפונים"}
-            onChange={(e) => setDraft(e.target.value)}
-          />
-        </label>
-        {preview.length > 0 ? (
-          <ul className="shop-preview" aria-label="פריטים שייתווספו">
-            {preview.map((row, index) => (
-              <li key={`${row.name}-${index}`}>
-                <span className="shop-amount">{formatParsedAmount(row)}</span>
-                <span>{row.name}</span>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-        <button className="btn btn-primary" disabled={pending} type="submit">הוספת פריטים</button>
-      </form>
+          {preview.length > 0 ? (
+            <ul className="shop-preview" aria-label="פריטים שייתווספו">
+              {preview.map((row, index) => (
+                <li key={`${row.name}-${index}`}>
+                  <span className="shop-amount">{formatParsedAmount(row)}</span>
+                  <span>{row.name}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          <button className="btn btn-primary" disabled={pending} type="submit">הוספת פריטים</button>
+        </form>
       </Sheet>
       {addingList ? (
         <div className="modal-back" role="presentation" onClick={() => setAddingList(false)}>
@@ -277,92 +278,98 @@ export default function ShopPage() {
       {!lists ? <Skeleton rows={3} /> : null}
       {lists && lists.length === 0 ? <Empty title="אין קטגוריות" hint="הוסיפו קטגוריה ואז פריטים." action={<button className="btn btn-primary" type="button" onClick={() => setAddingList(true)}>קטגוריה חדשה</button>} /> : null}
       <div ref={listsRoot}>
-      {lists?.map((list, listIndex) => (
-        <div key={list.id} data-drag-row="">
-        <CollapsibleSection
-          className="tone tone-shop"
-          storageKey={`shop-list-${list.id}`}
-          title={<h2>{list.name}</h2>}
-          handle={
-            <DragHandle
-              label={`סידור הרשימה ${list.name}`}
-              onPointerDown={(event) => drag.start(
-                listIndex,
-                event,
-                () => listsRoot.current,
-                moveLists,
-                () => saveOrder("hms_shop_lists", listsRef.current ?? []),
-              )}
-            />
-          }
-          action={
-            <RowMenu label={`פעולות ${list.name}`}>
-              <MenuItem onSelect={() => endSession(list.id)}>סיום סשן</MenuItem>
-              <MenuItem danger onSelect={() => removeList(list.id)}>מחיקת קטגוריה</MenuItem>
-            </RowMenu>
-          }
-        >
-          {(list.hms_shop_items ?? []).length === 0 ? <Empty title="אין פריטים בקטגוריה" /> : null}
-          <ul
-            className="stack"
-            ref={(node) => {
-              if (node) itemRoots.current.set(list.id, node);
-              else itemRoots.current.delete(list.id);
-            }}
-          >
-            {(list.hms_shop_items ?? []).map((item, itemIndex) => (
-              <SwipeRow
-                key={item.id}
-                sortable
-                startActions={[{
-                  label: item.bought ? "להחזיר" : "נקנה",
-                  icon: item.bought ? <Circle aria-hidden="true" /> : <Check aria-hidden="true" />,
-                  onSelect: () => toggle(item),
-                }]}
-                endActions={[{
-                  label: "מחיקה",
-                  icon: <Trash2 aria-hidden="true" />,
-                  onSelect: () => removeItem(item),
-                  tone: "danger",
-                }]}
-              >
-                <IconButton
-                  label={item.bought ? `בטל סימון של ${item.name}` : `סמן את ${item.name} כנקנה`}
-                  aria-pressed={item.bought}
-                  onClick={() => toggle(item)}
-                >
-                  {item.bought ? <Check size={18} aria-hidden="true" /> : <Circle size={18} aria-hidden="true" />}
-                </IconButton>
-                <div className="row-open shop-pair">
-                  <span className="shop-amount">{formatAmount(item) || "–"}</span>
-                  <span className={item.bought ? "bought" : undefined}>
-                    <ItemLabel value={item.name} />
-                    {item.one_off ? <span className="meta"> חד-פעמי</span> : null}
-                  </span>
-                </div>
+        {lists?.map((list, listIndex) => (
+          <div key={list.id} data-drag-row="">
+            <CollapsibleSection
+              className="tone tone-shop"
+              storageKey={`shop-list-${list.id}`}
+              title={<h2>{list.name}</h2>}
+              handle={
                 <DragHandle
-                  label={`סידור ${item.name}`}
+                  label={`סידור הרשימה ${list.name}`}
                   onPointerDown={(event) => drag.start(
-                    itemIndex,
+                    listIndex,
                     event,
-                    () => itemRoots.current.get(list.id) ?? null,
-                    (from, to) => moveItems(list.id, from, to),
-                    () => {
-                      const items = listsRef.current?.find((row) => row.id === list.id)?.hms_shop_items ?? [];
-                      return saveOrder("hms_shop_items", items);
-                    },
+                    () => listsRoot.current,
+                    moveLists,
+                    () => saveOrder("hms_shop_lists", listsRef.current ?? []),
                   )}
                 />
-                <RowMenu label={`פעולות עבור ${item.name}`}>
-                  <MenuItem danger onSelect={() => removeItem(item)}>מחיקה</MenuItem>
+              }
+              action={
+                <RowMenu label={`פעולות ${list.name}`}>
+                  <MenuItem onSelect={() => endSession(list.id)}>סיום סשן</MenuItem>
+                  <MenuItem danger onSelect={() => removeList(list.id)}>מחיקת קטגוריה</MenuItem>
                 </RowMenu>
-              </SwipeRow>
-            ))}
-          </ul>
-        </CollapsibleSection>
-        </div>
-      ))}
+              }
+            >
+              {(list.hms_shop_items ?? []).length === 0 ? <Empty title="אין פריטים בקטגוריה" /> : null}
+              <ul
+                className="stack"
+                ref={(node) => {
+                  if (node) itemRoots.current.set(list.id, node);
+                  else itemRoots.current.delete(list.id);
+                }}
+              >
+                {(list.hms_shop_items ?? []).map((item, itemIndex) => (
+                  <SwipeRow
+                    key={item.id}
+                    sortable
+                    startActions={[{
+                      label: item.bought ? "להחזיר" : "נקנה",
+                      icon: item.bought ? <Circle aria-hidden="true" /> : <Check aria-hidden="true" />,
+                      onSelect: () => toggle(item),
+                    }]}
+                    endActions={[{
+                      label: "מחיקה",
+                      icon: <Trash2 aria-hidden="true" />,
+                      onSelect: () => removeItem(item),
+                      tone: "danger",
+                    }]}
+                  >
+                    <IconButton
+                      label={item.bought ? `בטל סימון של ${item.name}` : `סמן את ${item.name} כנקנה`}
+                      aria-pressed={item.bought}
+                      onClick={() => toggle(item)}
+                    >
+                      {item.bought ? <Check size={18} aria-hidden="true" /> : <Circle size={18} aria-hidden="true" />}
+                    </IconButton>
+                    <div className="row-open shop-pair">
+                      <span className="shop-amount">{formatAmount(item) || "–"}</span>
+                      <span className={item.bought ? "bought" : undefined}>
+                        <ItemLabel value={item.name} />
+                        {item.one_off ? <span className="meta"> חד-פעמי</span> : null}
+                      </span>
+                    </div>
+                    <DragHandle
+                      label={`סידור ${item.name}`}
+                      onPointerDown={(event) => drag.start(
+                        itemIndex,
+                        event,
+                        () => itemRoots.current.get(list.id) ?? null,
+                        (from, to) => moveItems(list.id, from, to),
+                        () => {
+                          const items = listsRef.current?.find((row) => row.id === list.id)?.hms_shop_items ?? [];
+                          return saveOrder("hms_shop_items", items);
+                        },
+                      )}
+                    />
+                    <RowMenu label={`פעולות עבור ${item.name}`}>
+                      <MenuItem danger onSelect={() => removeItem(item)}>מחיקה</MenuItem>
+                    </RowMenu>
+                  </SwipeRow>
+                ))}
+              </ul>
+            </CollapsibleSection>
+          </div>
+        ))}
       </div>
+      {/* <p className="meta"><Link href="/wishes">משאלות</Link></p> */}
+      <Tip label="משאלות">
+        <Link className="icon-btn home-link" href="/wishes" aria-label="משאלות">
+          <Gift size={18} aria-hidden="true" />
+        </Link>
+      </Tip>
     </>
   );
 }
