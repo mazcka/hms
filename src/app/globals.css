@@ -308,6 +308,8 @@ input, select, textarea {
   border-radius: var(--radius-md);
   background: #fffdf9;
   color: var(--color-foreground);
+  /* 16px: iOS zooms the page when a focused field is smaller */
+  font-size: 16px;
   transition: border-color 180ms ease, box-shadow 180ms ease;
 }
 input:hover, select:hover, textarea:hover { border-color: #cbb59f; }
