@@ -72,7 +72,7 @@ export function QuickAdd() {
       });
     }
     if (kind === "shop") {
-      gate.supabase.from("hms_shop_lists").select("id, name").eq("household_id", hid).order("name").then(({ data }) => {
+      gate.supabase.from("hms_shop_lists").select("id, name, sort_order").eq("household_id", hid).order("sort_order").then(({ data }) => {
         const rows = (data ?? []) as List[];
         setLists(rows);
         setListId(rows[0]?.id ?? "");

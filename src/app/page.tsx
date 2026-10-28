@@ -8,11 +8,11 @@ import { useHousehold } from "@/components/auth-provider";
 import { CollapsibleSection } from "@/components/collapsible-section";
 import { TaskLine } from "@/components/task-line";
 import { SwipeRow } from "@/components/swipe-row";
-import { Alert, Empty, PageHead, PersonLink, Skeleton } from "@/components/ui";
+import { Alert, Empty, ItemLabel, PageHead, PersonLink, Skeleton } from "@/components/ui";
 import { WEEKDAYS, addDaysIso, todayIso } from "@/lib/labels";
 import { HMS_REFRESH, TASK_FIELDS, arrangeTasks, type Task } from "@/lib/task";
 type Item = { id: string; name: string; quantity: number | null; unit: string | null; bought: boolean; sort_order: number };
-type List = { id: string; name: string; hms_shop_items: Item[] };
+type List = { id: string; name: string; sort_order: number; hms_shop_items: Item[] };
 type ClassRow = { id: string; name: string; starts_at: string; place: string | null; person_id: string };
 type Person = { id: string; name: string };
 type EventRow = {
@@ -40,7 +40,7 @@ export default function WeekPage() {
       const weekday = new Date().getDay();
       Promise.all([
         gate!.supabase.from("hms_tasks").select(TASK_FIELDS).eq("household_id", gate!.member.household_id),
-        gate!.supabase.from("hms_shop_lists").select("id, name, hms_shop_items(id, name, quantity, unit, bought, sort_order)").eq("household_id", gate!.member.household_id).order("name"),
+        gate!.supabase.from("hms_shop_lists").select("id, name, sort_order, hms_shop_items(id, name, quantity, unit, bought, sort_order)").eq("household_id", gate!.member.household_id).order("sort_order"),
         gate!.supabase.from("hms_classes").select("id, name, starts_at, place, person_id, weekdays, weekday").eq("household_id", gate!.member.household_id).contains("weekdays", [weekday]).eq("active", true).order("starts_at"),
         gate!.supabase.from("hms_people").select("id, name").eq("household_id", gate!.member.household_id),
         gate!.supabase.from("hms_events").select("id, title, event_date, event_time, remind_day_before").eq("household_id", gate!.member.household_id).gte("event_date", today).order("event_date"),
@@ -173,7 +173,7 @@ export default function WeekPage() {
                     </IconButton>
                     <div className="row-open shop-pair">
                       <span className="shop-amount">{formatAmount(item) || "–"}</span>
-                      <span>{item.name}</span>
+                      <ItemLabel value={item.name} />
                     </div>
                   </SwipeRow>
                 ))}

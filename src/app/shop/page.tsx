@@ -1,13 +1,14 @@
 "use client";
 
-import { ArrowDown, ArrowUp, Check, Circle, Plus, Trash2, X } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { Check, Circle, Plus, Trash2, X } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useHousehold } from "@/components/auth-provider";
 import { CollapsibleSection } from "@/components/collapsible-section";
+import { DragHandle, reorder, useDragSort } from "@/components/drag-handle";
 import { IconButton, MenuItem, RowMenu } from "@/components/menu";
 import { Sheet } from "@/components/sheet";
 import { SwipeRow } from "@/components/swipe-row";
-import { Alert, Empty, PageHead, Skeleton } from "@/components/ui";
+import { Alert, Empty, ItemLabel, PageHead, Skeleton } from "@/components/ui";
 import { notifyRefresh } from "@/lib/task";
 import { formatParsedAmount, parseShoppingText } from "@/lib/shop-list";
 
@@ -20,7 +21,7 @@ type Item = {
   one_off: boolean;
   sort_order: number;
 };
-type List = { id: string; name: string; hms_shop_items: Item[] };
+type List = { id: string; name: string; sort_order: number; hms_shop_items: Item[] };
 function formatAmount(item: Item) {
   if (item.quantity != null && item.unit) return `${item.quantity} ${item.unit}`;
   if (item.quantity != null) return String(item.quantity);
@@ -37,19 +38,26 @@ export default function ShopPage() {
   const [pending, setPending] = useState(false);
   const [addingList, setAddingList] = useState(false);
   const [addingItems, setAddingItems] = useState(false);
+  const listsRef = useRef(lists);
+  listsRef.current = lists;
+  const listsRoot = useRef<HTMLDivElement>(null);
+  const itemRoots = useRef(new Map<string, HTMLUListElement>());
+  const drag = useDragSort();
 
   async function load() {
     if (!gate) return;
     const { data, error: queryError } = await gate.supabase
       .from("hms_shop_lists")
-      .select("id, name, hms_shop_items(id, name, quantity, unit, bought, one_off, sort_order)")
+      .select("id, name, sort_order, hms_shop_items(id, name, quantity, unit, bought, one_off, sort_order)")
       .eq("household_id", gate.member.household_id)
       .order("name");
     if (queryError) setError(queryError.message);
-    const rows = ((data ?? []) as List[]).map((list) => ({
-      ...list,
-      hms_shop_items: [...(list.hms_shop_items ?? [])].sort((a, b) => a.sort_order - b.sort_order),
-    }));
+    const rows = ((data ?? []) as List[])
+      .map((list) => ({
+        ...list,
+        hms_shop_items: [...(list.hms_shop_items ?? [])].sort((a, b) => a.sort_order - b.sort_order),
+      }))
+      .sort((a, b) => a.sort_order - b.sort_order);
     setLists(rows);
     if (!listId && rows[0]) setListId(rows[0].id);
   }
@@ -134,30 +142,49 @@ export default function ShopPage() {
     else await load();
   }
 
-  async function moveItem(list: List, itemIndex: number, direction: -1 | 1) {
+  function moveItems(listId: string, from: number, to: number) {
+    const next = (listsRef.current ?? []).map((list) => (
+      list.id === listId ? { ...list, hms_shop_items: reorder(list.hms_shop_items, from, to) } : list
+    ));
+    listsRef.current = next;
+    setLists(next);
+  }
+
+  function moveLists(from: number, to: number) {
+    const next = reorder(listsRef.current ?? [], from, to);
+    listsRef.current = next;
+    setLists(next);
+  }
+
+  async function saveOrder(table: "hms_shop_items" | "hms_shop_lists", rows: { id: string; sort_order: number }[]) {
     if (!gate) return;
-    const adjacent = list.hms_shop_items[itemIndex + direction];
-    const item = list.hms_shop_items[itemIndex];
-    if (!item || !adjacent) return;
-
-    setError("");
-    setLists((current) => (current ?? []).map((row) => {
-      if (row.id !== list.id) return row;
-      const items = [...row.hms_shop_items];
-      [items[itemIndex], items[itemIndex + direction]] = [items[itemIndex + direction], items[itemIndex]];
-      return { ...row, hms_shop_items: items };
-    }));
-
-    const { error: writeError } = await gate.supabase.rpc("hms_swap_shop_items", {
-      first_id: item.id,
-      second_id: adjacent.id,
-    });
-    if (writeError) {
-      setError(writeError.message);
+    const changed = rows
+      .map((row, index) => ({ id: row.id, sort_order: (index + 1) * 1000, previous: row.sort_order }))
+      .filter((row) => row.sort_order !== row.previous);
+    if (changed.length === 0) return;
+    const results = await Promise.all(changed.map((row) => (
+      gate.supabase.from(table).update({ sort_order: row.sort_order }).eq("id", row.id)
+    )));
+    const message = results.find((result) => result.error)?.error?.message;
+    if (message) {
+      setError(message);
       await load();
-    } else {
-      notifyRefresh();
+      return;
     }
+    const order = new Map(changed.map((row) => [row.id, row.sort_order]));
+    setLists((current) => {
+      const next = (current ?? []).map((list) => ({
+        ...list,
+        sort_order: order.get(list.id) ?? list.sort_order,
+        hms_shop_items: list.hms_shop_items.map((item) => ({
+          ...item,
+          sort_order: order.get(item.id) ?? item.sort_order,
+        })),
+      }));
+      listsRef.current = next;
+      return next;
+    });
+    notifyRefresh();
   }
 
   async function endSession(id: string) {
@@ -249,12 +276,25 @@ export default function ShopPage() {
       ) : null}
       {!lists ? <Skeleton rows={3} /> : null}
       {lists && lists.length === 0 ? <Empty title="אין קטגוריות" hint="הוסיפו קטגוריה ואז פריטים." action={<button className="btn btn-primary" type="button" onClick={() => setAddingList(true)}>קטגוריה חדשה</button>} /> : null}
-      {lists?.map((list) => (
+      <div ref={listsRoot}>
+      {lists?.map((list, listIndex) => (
+        <div key={list.id} data-drag-row="">
         <CollapsibleSection
           className="tone tone-shop"
-          key={list.id}
           storageKey={`shop-list-${list.id}`}
           title={<h2>{list.name}</h2>}
+          handle={
+            <DragHandle
+              label={`סידור הרשימה ${list.name}`}
+              onPointerDown={(event) => drag.start(
+                listIndex,
+                event,
+                () => listsRoot.current,
+                moveLists,
+                () => saveOrder("hms_shop_lists", listsRef.current ?? []),
+              )}
+            />
+          }
           action={
             <RowMenu label={`פעולות ${list.name}`}>
               <MenuItem onSelect={() => endSession(list.id)}>סיום סשן</MenuItem>
@@ -263,34 +303,28 @@ export default function ShopPage() {
           }
         >
           {(list.hms_shop_items ?? []).length === 0 ? <Empty title="אין פריטים בקטגוריה" /> : null}
-          <ul className="stack">
+          <ul
+            className="stack"
+            ref={(node) => {
+              if (node) itemRoots.current.set(list.id, node);
+              else itemRoots.current.delete(list.id);
+            }}
+          >
             {(list.hms_shop_items ?? []).map((item, itemIndex) => (
               <SwipeRow
                 key={item.id}
+                sortable
                 startActions={[{
                   label: item.bought ? "להחזיר" : "נקנה",
                   icon: item.bought ? <Circle aria-hidden="true" /> : <Check aria-hidden="true" />,
                   onSelect: () => toggle(item),
                 }]}
-                endActions={[
-                  ...(itemIndex > 0 ? [{
-                    label: "למעלה",
-                    icon: <ArrowUp aria-hidden="true" />,
-                    onSelect: () => moveItem(list, itemIndex, -1 as const),
-                  }] : []),
-                  ...(itemIndex < list.hms_shop_items.length - 1 ? [{
-                    label: "למטה",
-                    icon: <ArrowDown aria-hidden="true" />,
-                    onSelect: () => moveItem(list, itemIndex, 1 as const),
-                    tone: "warning" as const,
-                  }] : []),
-                  {
-                    label: "מחיקה",
-                    icon: <Trash2 aria-hidden="true" />,
-                    onSelect: () => removeItem(item),
-                    tone: "danger" as const,
-                  },
-                ]}
+                endActions={[{
+                  label: "מחיקה",
+                  icon: <Trash2 aria-hidden="true" />,
+                  onSelect: () => removeItem(item),
+                  tone: "danger",
+                }]}
               >
                 <IconButton
                   label={item.bought ? `בטל סימון של ${item.name}` : `סמן את ${item.name} כנקנה`}
@@ -302,20 +336,33 @@ export default function ShopPage() {
                 <div className="row-open shop-pair">
                   <span className="shop-amount">{formatAmount(item) || "–"}</span>
                   <span className={item.bought ? "bought" : undefined}>
-                    {item.name}
+                    <ItemLabel value={item.name} />
                     {item.one_off ? <span className="meta"> חד-פעמי</span> : null}
                   </span>
                 </div>
-                <RowMenu label={`סידור ופעולות עבור ${item.name}`}>
-                  {itemIndex > 0 ? <MenuItem onSelect={() => moveItem(list, itemIndex, -1)}>העברה למעלה</MenuItem> : null}
-                  {itemIndex < list.hms_shop_items.length - 1 ? <MenuItem onSelect={() => moveItem(list, itemIndex, 1)}>העברה למטה</MenuItem> : null}
+                <DragHandle
+                  label={`סידור ${item.name}`}
+                  onPointerDown={(event) => drag.start(
+                    itemIndex,
+                    event,
+                    () => itemRoots.current.get(list.id) ?? null,
+                    (from, to) => moveItems(list.id, from, to),
+                    () => {
+                      const items = listsRef.current?.find((row) => row.id === list.id)?.hms_shop_items ?? [];
+                      return saveOrder("hms_shop_items", items);
+                    },
+                  )}
+                />
+                <RowMenu label={`פעולות עבור ${item.name}`}>
                   <MenuItem danger onSelect={() => removeItem(item)}>מחיקה</MenuItem>
                 </RowMenu>
               </SwipeRow>
             ))}
           </ul>
         </CollapsibleSection>
+        </div>
       ))}
+      </div>
     </>
   );
 }

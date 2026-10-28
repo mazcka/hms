@@ -31,6 +31,21 @@ export function Skeleton({ rows = 3 }: { rows?: number }) {
   );
 }
 
+const URL_TEXT = /^(https?:\/\/|www\.)\S+$/i;
+
+export function ItemLabel({ value }: { value: string }) {
+  const text = value.trim();
+  if (!URL_TEXT.test(text)) return <span className="item-label">{value}</span>;
+  const href = /^https?:\/\//i.test(text) ? text : `https://${text}`;
+  return (
+    <span className="item-label">
+      <a href={href} target="_blank" rel="noreferrer">
+        {text}
+      </a>
+    </span>
+  );
+}
+
 export function PersonLink({ id, name }: { id: string; name: string }) {
   if (!name) return null;
   return (

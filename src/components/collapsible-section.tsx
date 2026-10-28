@@ -7,6 +7,7 @@ export function CollapsibleSection({
   storageKey,
   title,
   action,
+  handle,
   children,
   defaultOpen = true,
   className = "",
@@ -14,6 +15,7 @@ export function CollapsibleSection({
   storageKey: string;
   title: ReactNode;
   action?: ReactNode;
+  handle?: ReactNode;
   children: ReactNode;
   defaultOpen?: boolean;
   className?: string;
@@ -37,6 +39,7 @@ export function CollapsibleSection({
   return (
     <section className={`card collapsible-section ${open ? "collapsible-section-open" : ""} ${className}`.trim()}>
       <div className="collapsible-head">
+        {handle}
         <button
           className="collapsible-toggle"
           type="button"

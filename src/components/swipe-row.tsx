@@ -23,11 +23,13 @@ export function SwipeRow({
   startActions = [],
   endActions = [],
   className = "",
+  sortable = false,
 }: {
   children: ReactNode;
   startActions?: SwipeAction[];
   endActions?: SwipeAction[];
   className?: string;
+  sortable?: boolean;
 }) {
   const [offset, setOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -40,6 +42,7 @@ export function SwipeRow({
 
   function begin(event: ReactPointerEvent<HTMLDivElement>) {
     if (event.pointerType === "mouse" && event.button !== 0) return;
+    if ((event.target as HTMLElement).closest("[data-drag-handle]")) return;
     origin.current = { x: event.clientX, y: event.clientY, offset };
     horizontal.current = null;
     moved.current = false;
@@ -97,6 +100,7 @@ export function SwipeRow({
 
   return (
     <li
+      data-drag-row={sortable ? "" : undefined}
       className={`swipe-row ${offset ? "swipe-row-open" : ""} ${className}`.trim()}
       style={{ "--swipe-offset": `${offset}px` } as CSSProperties}
     >
