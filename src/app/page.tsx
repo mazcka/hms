@@ -6,6 +6,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useHousehold } from "@/components/auth-provider";
 import { CollapsibleSection } from "@/components/collapsible-section";
 import { MasonryGrid } from "@/components/masonry-grid";
+import { PlaceNav } from "@/components/place-nav";
 import { Sheet } from "@/components/sheet";
 import { TaskLine } from "@/components/task-line";
 import { SwipeRow } from "@/components/swipe-row";
@@ -39,16 +40,6 @@ type EventRow = {
   remind_day_before: boolean;
 };
 type Peek = { kind: "class"; row: ClassRow } | { kind: "event"; row: EventRow };
-
-function PlaceNav({ place }: { place: string }) {
-  const href = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(place)}`;
-  return (
-    <p className="stack">
-      <span>{place}</span>
-      <a className="btn btn-primary" href={href} target="_blank" rel="noopener noreferrer">ניווט</a>
-    </p>
-  );
-}
 
 export default function WeekPage() {
   const gate = useHousehold();
