@@ -955,19 +955,36 @@ details > summary {
   min-height: 12rem;
   color: var(--color-muted-foreground);
 }
-.loader-ring {
-  width: 2.25rem;
-  height: 2.25rem;
-  border-radius: 50%;
-  border: 3px solid var(--color-border);
-  border-top-color: var(--color-primary);
-  animation: spin 0.8s linear infinite;
+.loader-mark {
+  width: 3.25rem;
+  height: 3.25rem;
+  overflow: visible;
+  animation: loader-float 1.8s ease-in-out infinite;
+}
+.loader-leaf {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: loader-sway 1.8s ease-in-out infinite;
+}
+.loader-door {
+  animation: loader-glow 1.8s ease-in-out infinite;
 }
 .loader-label {
   font-size: var(--text-sm);
   font-weight: 600;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes loader-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+@keyframes loader-sway {
+  0%, 100% { transform: rotate(-12deg); }
+  50% { transform: rotate(14deg); }
+}
+@keyframes loader-glow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
 .skeleton span {
   display: block;
   height: 0.85rem;
@@ -1022,5 +1039,5 @@ details > summary {
   .btn, .nav a, input, select, textarea, .modal-back, .panel, .swipe-content, .swipe-actions, .collapsible-toggle svg, .masonry-item { transition: none; }
   .btn:hover:not(:disabled), .panel:hover { transform: none; }
   .modal-back { backdrop-filter: none; }
-  .loader-ring, .skeleton span { animation: none; }
+  .loader-mark, .loader-leaf, .loader-door, .skeleton span { animation: none; }
 }

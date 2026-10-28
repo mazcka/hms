@@ -50,7 +50,12 @@ export function BrandMark({ size = 36 }: { size?: number }) {
 export function Loader({ label = "טוען" }: { label?: string }) {
   return (
     <div className="loader" role="status" aria-live="polite">
-      <span className="loader-ring" aria-hidden="true" />
+      <svg className="loader-mark" viewBox="0 0 64 64" aria-hidden="true">
+        <path fill="#1B5E42" d="M8 30.2 32 9.5 56 30.2v3.4L32 14.2 8 33.6z" />
+        <path fill="#2E8A5E" d="M15 31.2h34v22.2a2.6 2.6 0 0 1-2.6 2.6H17.6A2.6 2.6 0 0 1 15 53.4z" />
+        <rect className="loader-door" fill="#C4A15A" x="29" y="40.5" width="6.5" height="12.5" rx="1" />
+        <path className="loader-leaf" fill="#C4A15A" d="M32 5.4c2.4 2.8 2.4 5.6 0 7-2.4-1.4-2.4-4.2 0-7z" />
+      </svg>
       <span className="loader-label">{label}</span>
     </div>
   );
