@@ -35,6 +35,7 @@ export function QuickAdd() {
   const [place, setPlace] = useState("");
   const [personId, setPersonId] = useState("");
   const [listId, setListId] = useState("");
+  const [newListName, setNewListName] = useState("");
   const [eventKind, setEventKind] = useState<keyof typeof EVENT_KINDS>("other");
   const [people, setPeople] = useState<Person[]>([]);
   const [lists, setLists] = useState<List[]>([]);
@@ -48,6 +49,7 @@ export function QuickAdd() {
     setExtra("");
     setEndsAt("");
     setPlace("");
+    setNewListName("");
     setError("");
     setPending(false);
   }
@@ -75,7 +77,7 @@ export function QuickAdd() {
       gate.supabase.from("hms_shop_lists").select("id, name, sort_order").eq("household_id", hid).order("sort_order").then(({ data }) => {
         const rows = (data ?? []) as List[];
         setLists(rows);
-        setListId(rows[0]?.id ?? "");
+        setListId(rows[0]?.id ?? "__new__");
       });
     }
   }, [gate, kind]);
@@ -106,7 +108,16 @@ export function QuickAdd() {
     if (kind === "shop") {
       const names = parseShoppingText(title);
       if (names.length === 0) message = "חסרים פריטים.";
-      let target = listId;
+      let target = listId === "__new__" ? "" : listId;
+      if (!message && listId === "__new__") {
+        const name = newListName.trim();
+        if (!name) message = "חסר שם קטגוריה.";
+        else {
+          const created = await current.supabase.from("hms_shop_lists").insert({ household_id: hid, name }).select("id").single();
+          message = created.error?.message ?? "";
+          target = (created.data as { id: string } | null)?.id ?? "";
+        }
+      }
       if (!message && !target) {
         const created = await current.supabase.from("hms_shop_lists").insert({ household_id: hid, name: "קניות" }).select("id").single();
         message = created.error?.message ?? "";
@@ -211,6 +222,7 @@ export function QuickAdd() {
                   setKind(item.id);
                   setMenu(false);
                   setTitle("");
+                  setNewListName("");
                   setExtra("");
                   setEndsAt("");
                   setPlace("");
@@ -257,15 +269,24 @@ export function QuickAdd() {
               <input className="modal-title" value={title} aria-label="שם" placeholder="שם" onChange={(e) => setTitle(e.target.value)} required autoFocus />
             )}
             {error ? <p className="alert" role="alert">{error}</p> : null}
-            {kind === "shop" && lists.length > 0 ? (
-              <label>
-                רשימה
-                <select value={listId} onChange={(e) => setListId(e.target.value)}>
-                  {lists.map((list) => (
-                    <option key={list.id} value={list.id}>{list.name}</option>
-                  ))}
-                </select>
-              </label>
+            {kind === "shop" ? (
+              <>
+                <label>
+                  רשימה
+                  <select value={listId} onChange={(e) => setListId(e.target.value)}>
+                    {lists.map((list) => (
+                      <option key={list.id} value={list.id}>{list.name}</option>
+                    ))}
+                    <option value="__new__">קטגוריה חדשה</option>
+                  </select>
+                </label>
+                {listId === "__new__" ? (
+                  <label>
+                    שם הקטגוריה
+                    <input value={newListName} aria-label="שם הקטגוריה" placeholder="למשל ירקות" onChange={(e) => setNewListName(e.target.value)} autoFocus />
+                  </label>
+                ) : null}
+              </>
             ) : null}
             {kind === "class" ? (
               <div className="modal-grid">
