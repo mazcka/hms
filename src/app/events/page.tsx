@@ -140,6 +140,10 @@ export default function EventsPage() {
           תאריך
           <input type="date" required value={form.event_date} onChange={(e) => setForm({ ...form, event_date: e.target.value })} />
         </label>
+        <label>
+          שעה
+          <input type="time" value={form.event_time} onChange={(e) => setForm({ ...form, event_time: e.target.value })} />
+        </label>
         <details>
           <summary>עוד פרטים</summary>
           <div className="stack">
@@ -150,10 +154,6 @@ export default function EventsPage() {
                   <option key={value} value={value}>{label}</option>
                 ))}
               </select>
-            </label>
-            <label>
-              שעה
-              <input type="time" value={form.event_time} onChange={(e) => setForm({ ...form, event_time: e.target.value })} />
             </label>
             <label>
               קשור ל

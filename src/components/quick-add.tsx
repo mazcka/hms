@@ -37,6 +37,7 @@ export function QuickAdd() {
   const [listId, setListId] = useState("");
   const [newListName, setNewListName] = useState("");
   const [eventKind, setEventKind] = useState<keyof typeof EVENT_KINDS>("other");
+  const [eventTime, setEventTime] = useState("");
   const [people, setPeople] = useState<Person[]>([]);
   const [lists, setLists] = useState<List[]>([]);
   const [error, setError] = useState("");
@@ -48,6 +49,7 @@ export function QuickAdd() {
     setTitle("");
     setExtra("");
     setEndsAt("");
+    setEventTime("");
     setPlace("");
     setNewListName("");
     setError("");
@@ -172,6 +174,7 @@ export function QuickAdd() {
           title: title.trim(),
           kind: eventKind,
           event_date: extra,
+          event_time: eventTime || null,
           created_by: current.member.id,
         });
         message = writeError?.message ?? "";
@@ -327,6 +330,10 @@ export function QuickAdd() {
                 <label>
                   תאריך
                   <input type="date" value={extra} onChange={(e) => setExtra(e.target.value)} required />
+                </label>
+                <label>
+                  שעה
+                  <input type="time" value={eventTime} onChange={(e) => setEventTime(e.target.value)} />
                 </label>
               </div>
             ) : null}

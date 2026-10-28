@@ -10,20 +10,45 @@ import { Sheet } from "@/components/sheet";
 import { TaskLine } from "@/components/task-line";
 import { SwipeRow } from "@/components/swipe-row";
 import { Alert, Empty, ItemLabel, PageHead, PersonLink, Skeleton } from "@/components/ui";
-import { WEEKDAYS, addDaysIso, todayIso } from "@/lib/labels";
+import { classDays } from "@/components/weekday-picker";
+import { EVENT_KINDS, WEEKDAYS, addDaysIso, todayIso } from "@/lib/labels";
 import { HMS_REFRESH, TASK_FIELDS, arrangeTasks, notifyRefresh, type Task } from "@/lib/task";
 type Item = { id: string; name: string; quantity: number | null; unit: string | null; bought: boolean; one_off: boolean; sort_order: number };
 type ShopEdit = { id: string; name: string; quantity: string; oneOff: boolean; listId: string };
 type List = { id: string; name: string; sort_order: number; hms_shop_items: Item[] };
-type ClassRow = { id: string; name: string; starts_at: string; place: string | null; person_id: string };
+type ClassRow = {
+  id: string;
+  name: string;
+  starts_at: string;
+  ends_at: string | null;
+  place: string | null;
+  person_id: string;
+  weekday: number;
+  weekdays: number[] | null;
+};
 type Person = { id: string; name: string };
 type EventRow = {
   id: string;
   title: string;
+  kind: keyof typeof EVENT_KINDS;
   event_date: string;
   event_time: string | null;
+  person_id: string | null;
+  place: string | null;
+  notes: string | null;
   remind_day_before: boolean;
 };
+type Peek = { kind: "class"; row: ClassRow } | { kind: "event"; row: EventRow };
+
+function PlaceNav({ place }: { place: string }) {
+  const href = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(place)}`;
+  return (
+    <p className="stack">
+      <span>{place}</span>
+      <a className="btn btn-primary" href={href} target="_blank" rel="noopener noreferrer">ניווט</a>
+    </p>
+  );
+}
 
 export default function WeekPage() {
   const gate = useHousehold();
@@ -34,6 +59,7 @@ export default function WeekPage() {
   const [people, setPeople] = useState<Person[]>([]);
   const [events, setEvents] = useState<EventRow[] | null>(null);
   const [editing, setEditing] = useState<ShopEdit | null>(null);
+  const [peek, setPeek] = useState<Peek | null>(null);
 
   useEffect(() => {
     if (!gate) return;
@@ -44,9 +70,9 @@ export default function WeekPage() {
       Promise.all([
         gate!.supabase.from("hms_tasks").select(TASK_FIELDS).eq("household_id", gate!.member.household_id),
         gate!.supabase.from("hms_shop_lists").select("id, name, sort_order, hms_shop_items(id, name, quantity, unit, bought, one_off, sort_order)").eq("household_id", gate!.member.household_id).order("sort_order"),
-        gate!.supabase.from("hms_classes").select("id, name, starts_at, place, person_id, weekdays, weekday").eq("household_id", gate!.member.household_id).contains("weekdays", [weekday]).eq("active", true).order("starts_at"),
+        gate!.supabase.from("hms_classes").select("id, name, starts_at, ends_at, place, person_id, weekdays, weekday").eq("household_id", gate!.member.household_id).contains("weekdays", [weekday]).eq("active", true).order("starts_at"),
         gate!.supabase.from("hms_people").select("id, name").eq("household_id", gate!.member.household_id),
-        gate!.supabase.from("hms_events").select("id, title, event_date, event_time, remind_day_before").eq("household_id", gate!.member.household_id).gte("event_date", today).order("event_date"),
+        gate!.supabase.from("hms_events").select("id, title, kind, event_date, event_time, person_id, place, notes, remind_day_before").eq("household_id", gate!.member.household_id).gte("event_date", today).order("event_date"),
       ]).then(([t, s, c, p, e]) => {
         if (!active) return;
         const message = t.error?.message || s.error?.message || c.error?.message || p.error?.message || e.error?.message;
@@ -170,10 +196,10 @@ export default function WeekPage() {
       <ul className="stack">
         {(classes ?? []).map((row) => (
           <li key={row.id} className="spread">
-            <span className="row-line">
+            <button className="row-line" type="button" onClick={() => setPeek({ kind: "class", row })}>
               <span className="row-mark" aria-hidden="true"><CalendarDays /></span>
               <span><strong>{row.starts_at.slice(0, 5)}</strong> {row.name}</span>
-            </span>
+            </button>
             <PersonLink id={row.person_id} name={personName(row.person_id)} />
           </li>
         ))}
@@ -191,12 +217,12 @@ export default function WeekPage() {
       {!loading && !hasEvents ? <Empty title="אין אירועים קרובים" /> : null}
       <ul className="stack">
         {(events ?? []).map((event) => (
-          <li key={event.id} className="spread">
-            <span className="row-line">
+          <li key={event.id}>
+            <button className="row-line spread" type="button" onClick={() => setPeek({ kind: "event", row: event })}>
               <span className="row-mark" aria-hidden="true"><Calendar /></span>
               <span>{event.title}</span>
-            </span>
-            <span className="meta">{event.event_date.slice(5)}{event.event_time ? ` ${event.event_time.slice(0, 5)}` : ""}</span>
+              <span className="meta">{event.event_date.slice(8, 10)}/{event.event_date.slice(5, 7)}{event.event_time ? ` ${event.event_time.slice(0, 5)}` : ""}</span>
+            </button>
           </li>
         ))}
       </ul>
@@ -277,6 +303,40 @@ export default function WeekPage() {
         {hasClasses ? null : classesCard}
         {hasEvents ? null : eventsCard}
       </MasonryGrid>
+      <Sheet
+        open={Boolean(peek)}
+        title={peek?.kind === "class" ? peek.row.name : peek?.row.title ?? ""}
+        onClose={() => setPeek(null)}
+      >
+        {peek?.kind === "class" ? (
+          <div className="stack">
+            <p>{personName(peek.row.person_id)}</p>
+            <p className="meta">
+              {classDays(peek.row).map((day) => WEEKDAYS[day]).join(", ")}
+              {" · "}
+              {peek.row.starts_at.slice(0, 5)}
+              {peek.row.ends_at ? `–${peek.row.ends_at.slice(0, 5)}` : ""}
+            </p>
+            {peek.row.place ? <PlaceNav place={peek.row.place} /> : null}
+            <Link className="btn btn-quiet" href="/classes" onClick={() => setPeek(null)}>לכל החוגים</Link>
+          </div>
+        ) : null}
+        {peek?.kind === "event" ? (
+          <div className="stack">
+            <p className="meta">
+              {EVENT_KINDS[peek.row.kind]}
+              {" · "}
+              {new Intl.DateTimeFormat("he-IL", { weekday: "long", day: "numeric", month: "long" }).format(new Date(`${peek.row.event_date}T12:00:00`))}
+              {peek.row.event_time ? ` · ${peek.row.event_time.slice(0, 5)}` : ""}
+            </p>
+            {peek.row.person_id ? <PersonLink id={peek.row.person_id} name={personName(peek.row.person_id)} /> : null}
+            {peek.row.place ? <PlaceNav place={peek.row.place} /> : null}
+            {peek.row.notes ? <p>{peek.row.notes}</p> : null}
+            {peek.row.remind_day_before ? <p className="meta">תזכורת יום לפני</p> : null}
+            <Link className="btn btn-quiet" href="/events" onClick={() => setPeek(null)}>לכל האירועים</Link>
+          </div>
+        ) : null}
+      </Sheet>
       <Sheet open={Boolean(editing)} title="עריכת פריט" onClose={() => setEditing(null)}>
         {editing ? (
           <form className="stack" onSubmit={saveEdit}>
