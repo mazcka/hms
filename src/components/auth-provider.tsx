@@ -40,8 +40,16 @@ export function useHousehold() {
 const NAV = [
   { href: "/", label: "היום", icon: "home" },
   { href: "/tasks", label: "משימות", icon: "check" },
+  { href: "/classes", label: "יומן", icon: "calendar" },
   { href: "/shop", label: "קניות", icon: "bag" },
+  { href: "/settings", label: "ניהול", icon: "settings" },
 ] as const;
+
+function navIsCurrent(pathname: string, href: string) {
+  if (href === "/") return pathname === "/";
+  if (href === "/classes") return pathname === "/classes" || pathname === "/events";
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
 
 function NavIcon({ name }: { name: (typeof NAV)[number]["icon"] }) {
   const common = { fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
@@ -60,6 +68,22 @@ function NavIcon({ name }: { name: (typeof NAV)[number]["icon"] }) {
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <rect {...common} x="4" y="4" width="16" height="16" rx="3" />
         <path {...common} d="m8 12 2.5 2.5L16 9" />
+      </svg>
+    );
+  }
+  if (name === "calendar") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect {...common} x="4" y="5" width="16" height="15" rx="2" />
+        <path {...common} d="M8 3.5v3M16 3.5v3M4 10h16" />
+      </svg>
+    );
+  }
+  if (name === "settings") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle {...common} cx="12" cy="12" r="3" />
+        <path {...common} d="M12 3.5v2.2M12 18.3v2.2M3.5 12h2.2M18.3 12h2.2M6.1 6.1l1.6 1.6M16.3 16.3l1.6 1.6M17.9 6.1l-1.6 1.6M7.7 16.3l-1.6 1.6" />
       </svg>
     );
   }
@@ -163,7 +187,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             <Link
               key={item.href}
               href={item.href}
-              aria-current={pathname === item.href ? "page" : undefined}
+              aria-current={navIsCurrent(pathname, item.href) ? "page" : undefined}
             >
               <NavIcon name={item.icon} />
               <span>{item.label}</span>

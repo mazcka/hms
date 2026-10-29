@@ -7,12 +7,13 @@ import { useRouter } from "next/navigation";
 import { useHousehold } from "@/components/auth-provider";
 import { PlaceField } from "@/components/place-field";
 import { WeekdayPicker } from "@/components/weekday-picker";
-import { EVENT_KINDS } from "@/lib/labels";
+import { eventKindOptions } from "@/lib/labels";
 import { parseShoppingText } from "@/lib/shop-list";
 import { notifyRefresh, notifyTasksChanged } from "@/lib/task";
 
 type Kind = "task" | "shop" | "class" | "event" | "wish";
 type Person = { id: string; name: string };
+type EventKind = { id: string; label: string };
 type List = { id: string; name: string };
 
 const KINDS: { id: Kind; label: string; hint: string; icon: LucideIcon }[] = [
@@ -36,7 +37,8 @@ export function QuickAdd() {
   const [personId, setPersonId] = useState("");
   const [listId, setListId] = useState("");
   const [newListName, setNewListName] = useState("");
-  const [eventKind, setEventKind] = useState<keyof typeof EVENT_KINDS>("other");
+  const [eventKind, setEventKind] = useState("other");
+  const [eventKinds, setEventKinds] = useState<EventKind[]>([]);
   const [eventTime, setEventTime] = useState("");
   const [people, setPeople] = useState<Person[]>([]);
   const [lists, setLists] = useState<List[]>([]);
@@ -73,6 +75,11 @@ export function QuickAdd() {
         const rows = (data ?? []) as Person[];
         setPeople(rows);
         setPersonId(rows[0]?.id ?? "");
+      });
+    }
+    if (kind === "event") {
+      gate.supabase.from("hms_event_kinds").select("id, label").eq("household_id", hid).order("label").then(({ data }) => {
+        setEventKinds((data ?? []) as EventKind[]);
       });
     }
     if (kind === "shop") {
@@ -321,9 +328,9 @@ export function QuickAdd() {
               <div className="modal-grid">
                 <label>
                   סוג
-                  <select value={eventKind} onChange={(e) => setEventKind(e.target.value as keyof typeof EVENT_KINDS)}>
-                    {Object.entries(EVENT_KINDS).map(([value, name]) => (
-                      <option key={value} value={value}>{name}</option>
+                  <select value={eventKind} onChange={(e) => setEventKind(e.target.value)}>
+                    {eventKindOptions(eventKinds).map((item) => (
+                      <option key={item.value} value={item.value}>{item.label}</option>
                     ))}
                   </select>
                 </label>

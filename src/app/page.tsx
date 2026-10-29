@@ -12,7 +12,7 @@ import { TaskLine } from "@/components/task-line";
 import { SwipeRow } from "@/components/swipe-row";
 import { Alert, Empty, ItemLabel, PageHead, PersonLink, Skeleton } from "@/components/ui";
 import { classDays } from "@/components/weekday-picker";
-import { EVENT_KINDS, WEEKDAYS, addDaysIso, formatDate, todayIso } from "@/lib/labels";
+import { WEEKDAYS, addDaysIso, eventKindLabel, formatDate, todayIso } from "@/lib/labels";
 import { HMS_REFRESH, TASK_FIELDS, arrangeTasks, notifyRefresh, type Task } from "@/lib/task";
 type Item = { id: string; name: string; quantity: number | null; unit: string | null; bought: boolean; one_off: boolean; sort_order: number };
 type ShopEdit = { id: string; name: string; quantity: string; oneOff: boolean; listId: string };
@@ -28,10 +28,11 @@ type ClassRow = {
   weekdays: number[] | null;
 };
 type Person = { id: string; name: string };
+type Kind = { id: string; label: string };
 type EventRow = {
   id: string;
   title: string;
-  kind: keyof typeof EVENT_KINDS;
+  kind: string;
   event_date: string;
   event_time: string | null;
   person_id: string | null;
@@ -49,6 +50,7 @@ export default function WeekPage() {
   const [classes, setClasses] = useState<ClassRow[] | null>(null);
   const [people, setPeople] = useState<Person[]>([]);
   const [events, setEvents] = useState<EventRow[] | null>(null);
+  const [kinds, setKinds] = useState<Kind[]>([]);
   const [editing, setEditing] = useState<ShopEdit | null>(null);
   const [peek, setPeek] = useState<Peek | null>(null);
 
@@ -64,7 +66,8 @@ export default function WeekPage() {
         gate!.supabase.from("hms_classes").select("id, name, starts_at, ends_at, place, person_id, weekdays, weekday").eq("household_id", gate!.member.household_id).contains("weekdays", [weekday]).eq("active", true).order("starts_at"),
         gate!.supabase.from("hms_people").select("id, name").eq("household_id", gate!.member.household_id),
         gate!.supabase.from("hms_events").select("id, title, kind, event_date, event_time, person_id, place, notes, remind_day_before").eq("household_id", gate!.member.household_id).gte("event_date", today).order("event_date"),
-      ]).then(([t, s, c, p, e]) => {
+        gate!.supabase.from("hms_event_kinds").select("id, label").eq("household_id", gate!.member.household_id),
+      ]).then(([t, s, c, p, e, k]) => {
         if (!active) return;
         const message = t.error?.message || s.error?.message || c.error?.message || p.error?.message || e.error?.message;
         if (message) setError(message);
@@ -73,6 +76,7 @@ export default function WeekPage() {
         setClasses((c.data ?? []) as ClassRow[]);
         setPeople((p.data ?? []) as Person[]);
         setEvents((e.data ?? []) as EventRow[]);
+        setKinds(k.error ? [] : (k.data ?? []) as Kind[]);
       });
     }
     load();
@@ -315,7 +319,7 @@ export default function WeekPage() {
         {peek?.kind === "event" ? (
           <div className="stack">
             <p className="meta">
-              {EVENT_KINDS[peek.row.kind]}
+              {eventKindLabel(peek.row.kind, kinds)}
               {" · "}
               {formatDate(peek.row.event_date)}
               {peek.row.event_time ? ` · ${peek.row.event_time.slice(0, 5)}` : ""}

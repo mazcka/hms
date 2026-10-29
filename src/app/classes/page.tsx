@@ -1,18 +1,20 @@
 "use client";
 
-import { CalendarDays, Pause, Pencil, Play, Trash2, UserRound } from "lucide-react";
+import Link from "next/link";
+import { CalendarDays, Pause, Pencil, Play, Trash2 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useHousehold } from "@/components/auth-provider";
 import { CollapsibleSection } from "@/components/collapsible-section";
 import { PlaceField } from "@/components/place-field";
 import { MenuItem, RowMenu } from "@/components/menu";
+import { SectionTabs } from "@/components/section-tabs";
 import { Sheet } from "@/components/sheet";
 import { SwipeRow } from "@/components/swipe-row";
 import { Alert, Empty, PageHead, PersonLink, Skeleton } from "@/components/ui";
 import { classDays, WeekdayPicker } from "@/components/weekday-picker";
-import { RELATIONS, WEEKDAYS } from "@/lib/labels";
+import { WEEKDAYS } from "@/lib/labels";
 
-type Person = { id: string; name: string; relation: keyof typeof RELATIONS };
+type Person = { id: string; name: string };
 type ClassRow = {
   id: string;
   person_id: string;
@@ -29,8 +31,6 @@ export default function ClassesPage() {
   const gate = useHousehold();
   const [people, setPeople] = useState<Person[]>([]);
   const [rows, setRows] = useState<ClassRow[] | null>(null);
-  const [personName, setPersonName] = useState("");
-  const [relation, setRelation] = useState<Person["relation"]>("daughter");
   const [form, setForm] = useState({ person_id: "", name: "", weekdays: [0] as number[], starts_at: "", ends_at: "", place: "" });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
@@ -39,7 +39,7 @@ export default function ClassesPage() {
   async function load() {
     if (!gate) return;
     const [p, c] = await Promise.all([
-      gate.supabase.from("hms_people").select("id, name, relation").eq("household_id", gate.member.household_id).order("name"),
+      gate.supabase.from("hms_people").select("id, name").eq("household_id", gate.member.household_id).order("name"),
       gate.supabase.from("hms_classes").select("id, person_id, name, weekday, weekdays, starts_at, ends_at, place, active").eq("household_id", gate.member.household_id).order("starts_at"),
     ]);
     if (p.error || c.error) setError(p.error?.message || c.error?.message || "");
@@ -58,25 +58,6 @@ export default function ClassesPage() {
   }, [gate]);
 
   if (!gate) return null;
-
-  async function addPerson(event: { preventDefault(): void }) {
-    event.preventDefault();
-    if (!gate) return;
-    if (!personName.trim()) {
-      setError("חסר שם.");
-      return;
-    }
-    const { error: writeError } = await gate.supabase.from("hms_people").insert({
-      household_id: gate.member.household_id,
-      name: personName.trim(),
-      relation,
-    });
-    if (writeError) setError(writeError.message);
-    else {
-      setPersonName("");
-      await load();
-    }
-  }
 
   async function addClass(event: FormEvent) {
     event.preventDefault();
@@ -128,16 +109,6 @@ export default function ClassesPage() {
     setForm({ person_id: "", name: "", weekdays: [0], starts_at: "", ends_at: "", place: "" });
   }
 
-  async function removePerson(id: string) {
-    if (!gate || !window.confirm("למחוק את האדם?")) return;
-    const { error: writeError } = await gate.supabase.from("hms_people").delete().eq("id", id);
-    if (writeError) setError(writeError.message);
-    else {
-      if (form.person_id === id) setForm({ ...form, person_id: "" });
-      await load();
-    }
-  }
-
   async function toggle(row: ClassRow) {
     if (!gate) return;
     const { error: writeError } = await gate.supabase.from("hms_classes").update({ active: !row.active }).eq("id", row.id);
@@ -159,43 +130,9 @@ export default function ClassesPage() {
         title="חוגים"
         action={<button className="btn btn-primary" type="button" onClick={() => { setEditingId(null); setFormOpen(true); }}>חוג חדש</button>}
       />
+      <SectionTabs />
       <Alert>{error}</Alert>
-      <details className="add card">
-        <summary>אנשים</summary>
-        <div className="stack">
-          <ul className="stack">
-            {people.map((person) => (
-                <SwipeRow
-                  key={person.id}
-                  endActions={[{
-                    label: "מחיקה",
-                    icon: <Trash2 aria-hidden="true" />,
-                    onSelect: () => removePerson(person.id),
-                    tone: "danger",
-                  }]}
-                >
-                  <span className="row-mark" aria-hidden="true"><UserRound /></span>
-                  <div className="row-open">
-                    <span>{person.name}</span>
-                    <span className="meta">{RELATIONS[person.relation]}</span>
-                  </div>
-                  <RowMenu label={`פעולות ${person.name}`}>
-                    <MenuItem danger icon={<Trash2 aria-hidden="true" />} onSelect={() => removePerson(person.id)}>מחיקה</MenuItem>
-                  </RowMenu>
-                </SwipeRow>
-            ))}
-          </ul>
-          <div className="row">
-            <input value={personName} onChange={(e) => setPersonName(e.target.value)} placeholder="שם" aria-label="שם" />
-            <select value={relation} aria-label="קשר" onChange={(e) => setRelation(e.target.value as Person["relation"])}>
-              {Object.entries(RELATIONS).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </select>
-            <button className="btn btn-quiet" type="button" onClick={(event) => addPerson(event)}>הוספה</button>
-          </div>
-        </div>
-      </details>
+      {people.length === 0 ? <p className="note">כדי לשייך חוג צריך קודם <Link href="/settings">להוסיף אדם בניהול</Link>.</p> : null}
       <Sheet open={formOpen} title={editingId ? "עריכת חוג" : "חוג חדש"} onClose={() => { setFormOpen(false); setEditingId(null); }}>
       <form className="stack" onSubmit={addClass}>
         <label>

@@ -5,11 +5,12 @@ import { useParams } from "next/navigation";
 import { useHousehold } from "@/components/auth-provider";
 import { CollapsibleSection } from "@/components/collapsible-section";
 import { Alert, Empty, Loader, PageHead } from "@/components/ui";
-import { EVENT_KINDS, RELATIONS, WEEKDAYS, WISH_STATUS, formatDate } from "@/lib/labels";
+import { RELATIONS, WEEKDAYS, WISH_STATUS, eventKindLabel, formatDate } from "@/lib/labels";
 
 type Person = { id: string; name: string; relation: keyof typeof RELATIONS };
 type ClassRow = { id: string; name: string; weekday: number; weekdays: number[] | null; starts_at: string; place: string | null };
-type EventRow = { id: string; title: string; kind: keyof typeof EVENT_KINDS; event_date: string };
+type Kind = { id: string; label: string };
+type EventRow = { id: string; title: string; kind: string; event_date: string };
 type Wish = { id: string; title: string; status: keyof typeof WISH_STATUS };
 
 export default function PersonPage() {
@@ -18,6 +19,7 @@ export default function PersonPage() {
   const [person, setPerson] = useState<Person | null>(null);
   const [classes, setClasses] = useState<ClassRow[] | null>(null);
   const [events, setEvents] = useState<EventRow[] | null>(null);
+  const [kinds, setKinds] = useState<Kind[]>([]);
   const [wishes, setWishes] = useState<Wish[] | null>(null);
   const [error, setError] = useState("");
 
@@ -29,13 +31,15 @@ export default function PersonPage() {
       gate.supabase.from("hms_classes").select("id, name, weekday, weekdays, starts_at, place").eq("person_id", id).order("starts_at"),
       gate.supabase.from("hms_events").select("id, title, kind, event_date").eq("person_id", id).order("event_date"),
       gate.supabase.from("hms_wishes").select("id, title, status").eq("for_person_id", id),
-    ]).then(([p, c, e, w]) => {
+      gate.supabase.from("hms_event_kinds").select("id, label").eq("household_id", gate.member.household_id),
+    ]).then(([p, c, e, w, k]) => {
       if (!active) return;
       setError(p.error?.message || c.error?.message || e.error?.message || w.error?.message || "");
       setPerson((p.data ?? null) as Person | null);
       setClasses((c.data ?? []) as ClassRow[]);
       setEvents((e.data ?? []) as EventRow[]);
       setWishes((w.data ?? []) as Wish[]);
+      setKinds(k.error ? [] : (k.data ?? []) as Kind[]);
     });
     return () => {
       active = false;
@@ -62,7 +66,7 @@ export default function PersonPage() {
         {events?.length === 0 ? <Empty title="אין אירועים" /> : null}
         <ul className="stack">
           {events?.map((row) => (
-            <li key={row.id}>{formatDate(row.event_date)} · {row.title}</li>
+            <li key={row.id}>{formatDate(row.event_date)} · {eventKindLabel(row.kind, kinds)} · {row.title}</li>
           ))}
         </ul>
       </CollapsibleSection>

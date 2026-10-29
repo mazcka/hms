@@ -18,6 +18,20 @@ export const EVENT_KINDS = {
   other: "אחר",
 } as const;
 
+export type EventKindOption = { value: string; label: string };
+
+export function eventKindOptions(custom: { id: string; label: string }[] = []): EventKindOption[] {
+  return [
+    ...Object.entries(EVENT_KINDS).map(([value, label]) => ({ value, label })),
+    ...custom.map((kind) => ({ value: kind.id, label: kind.label })),
+  ];
+}
+
+export function eventKindLabel(kind: string, custom: { id: string; label: string }[] = []) {
+  if (kind in EVENT_KINDS) return EVENT_KINDS[kind as keyof typeof EVENT_KINDS];
+  return custom.find((item) => item.id === kind)?.label ?? kind;
+}
+
 export const WISH_STATUS = {
   idea: "רעיון",
   planned: "הוחלט לקנות",

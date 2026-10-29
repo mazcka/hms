@@ -6,16 +6,18 @@ import { useHousehold } from "@/components/auth-provider";
 import { CollapsibleSection } from "@/components/collapsible-section";
 import { PlaceField } from "@/components/place-field";
 import { MenuItem, RowMenu } from "@/components/menu";
+import { SectionTabs } from "@/components/section-tabs";
 import { Sheet } from "@/components/sheet";
 import { SwipeRow } from "@/components/swipe-row";
 import { Alert, Empty, PageHead, PersonLink, Skeleton } from "@/components/ui";
-import { EVENT_KINDS, formatDate } from "@/lib/labels";
+import { eventKindLabel, eventKindOptions, formatDate } from "@/lib/labels";
 
 type Person = { id: string; name: string };
+type Kind = { id: string; label: string };
 type EventRow = {
   id: string;
   title: string;
-  kind: keyof typeof EVENT_KINDS;
+  kind: string;
   event_date: string;
   event_time: string | null;
   person_id: string | null;
@@ -24,11 +26,12 @@ type EventRow = {
   remind_day_before: boolean;
 };
 
-const blank = { title: "", kind: "birthday" as keyof typeof EVENT_KINDS, event_date: "", event_time: "", person_id: "", place: "", notes: "", remind_day_before: true };
+const blank = { title: "", kind: "birthday", event_date: "", event_time: "", person_id: "", place: "", notes: "", remind_day_before: true };
 
 export default function EventsPage() {
   const gate = useHousehold();
   const [people, setPeople] = useState<Person[]>([]);
+  const [kinds, setKinds] = useState<Kind[]>([]);
   const [rows, setRows] = useState<EventRow[] | null>(null);
   const [form, setForm] = useState(blank);
   const [composer, setComposer] = useState(false);
@@ -38,13 +41,15 @@ export default function EventsPage() {
 
   async function load() {
     if (!gate) return;
-    const [p, e] = await Promise.all([
+    const [p, e, k] = await Promise.all([
       gate.supabase.from("hms_people").select("id, name").eq("household_id", gate.member.household_id).order("name"),
       gate.supabase.from("hms_events").select("id, title, kind, event_date, event_time, person_id, place, notes, remind_day_before").eq("household_id", gate.member.household_id).order("event_date"),
+      gate.supabase.from("hms_event_kinds").select("id, label").eq("household_id", gate.member.household_id).order("label"),
     ]);
     if (p.error || e.error) setError(p.error?.message || e.error?.message || "");
     setPeople((p.data ?? []) as Person[]);
     setRows((e.data ?? []) as EventRow[]);
+    setKinds(k.error ? [] : (k.data ?? []) as Kind[]);
   }
 
   useEffect(() => {
@@ -128,6 +133,7 @@ export default function EventsPage() {
   return (
     <>
       <PageHead title="אירועים" action={<button className="btn btn-primary" type="button" onClick={() => setComposer(true)}>אירוע חדש</button>} />
+      <SectionTabs />
       <Alert>{error}</Alert>
       {notice ? <p className="note">{notice}</p> : null}
       <Sheet open={composer} title={editingId ? "עריכת אירוע" : "אירוע חדש"} onClose={() => { setComposer(false); setEditingId(null); setForm(blank); }}>
@@ -149,9 +155,9 @@ export default function EventsPage() {
           <div className="stack">
             <label>
               סוג
-              <select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value as EventRow["kind"] })}>
-                {Object.entries(EVENT_KINDS).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
+              <select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}>
+                {eventKindOptions(kinds).map((kind) => (
+                  <option key={kind.value} value={kind.value}>{kind.label}</option>
                 ))}
               </select>
             </label>
@@ -199,7 +205,7 @@ export default function EventsPage() {
                 <div className="row-open">
                   <span>{row.title}</span>
                   <span className="meta">
-                    {EVENT_KINDS[row.kind]} · {formatDate(row.event_date)}
+                    {eventKindLabel(row.kind, kinds)} · {formatDate(row.event_date)}
                     {row.event_time ? ` · ${row.event_time.slice(0, 5)}` : ""}
                     {row.person_id ? <PersonLink id={row.person_id} name={people.find((p) => p.id === row.person_id)?.name ?? ""} /> : null}
                   </span>
