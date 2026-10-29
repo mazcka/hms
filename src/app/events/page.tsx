@@ -11,6 +11,7 @@ import { Sheet } from "@/components/sheet";
 import { SwipeRow } from "@/components/swipe-row";
 import { Alert, Empty, PageHead, PersonLink, Skeleton } from "@/components/ui";
 import { eventKindLabel, eventKindOptions, formatDate } from "@/lib/labels";
+import { savePushSubscription } from "@/lib/push-client";
 
 type Person = { id: string; name: string };
 type Kind = { id: string; label: string };
@@ -122,12 +123,13 @@ export default function EventsPage() {
   }
 
   async function enableReminders() {
-    if (typeof Notification === "undefined") {
-      setNotice("הדפדפן לא תומך בהתראות.");
-      return;
-    }
-    const result = await Notification.requestPermission();
-    setNotice(result === "granted" ? "תזכורת ליום לפני תופיע כשהאפליקציה נפתחת." : "ההרשאה לא ניתנה.");
+    if (!gate) return;
+    const result = await savePushSubscription(gate.session.access_token);
+    if (result === "granted") setNotice("התראות פעילות. תזכורת לאירוע תגיע בבוקר של היום שלפניו, גם כשהאפליקציה סגורה.");
+    else if (result === "browser") setNotice("באייפון צריך לפתוח את מצקה מהאייקון במסך הבית.");
+    else if (result === "unsupported") setNotice("הדפדפן לא תומך בהתראות.");
+    else if (result === "save") setNotice("ההרשאה ניתנה, אבל שמירת המכשיר נכשלה.");
+    else setNotice("ההרשאה לא ניתנה.");
   }
 
   return (

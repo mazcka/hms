@@ -12,7 +12,7 @@ import { TaskLine } from "@/components/task-line";
 import { SwipeRow } from "@/components/swipe-row";
 import { Alert, Empty, ItemLabel, PageHead, PersonLink, Skeleton } from "@/components/ui";
 import { classDays } from "@/components/weekday-picker";
-import { WEEKDAYS, addDaysIso, eventKindLabel, formatDate, todayIso } from "@/lib/labels";
+import { WEEKDAYS, eventKindLabel, formatDate, todayIso } from "@/lib/labels";
 import { HMS_REFRESH, TASK_FIELDS, arrangeTasks, notifyRefresh, type Task } from "@/lib/task";
 type Item = { id: string; name: string; quantity: number | null; unit: string | null; bought: boolean; one_off: boolean; sort_order: number };
 type ShopEdit = { id: string; name: string; quantity: string; oneOff: boolean; listId: string };
@@ -86,18 +86,6 @@ export default function WeekPage() {
       window.removeEventListener(HMS_REFRESH, load);
     };
   }, [gate]);
-
-  useEffect(() => {
-    if (!events || typeof Notification === "undefined" || Notification.permission !== "granted") return;
-    const tomorrow = addDaysIso(todayIso(), 1);
-    for (const event of events) {
-      if (!event.remind_day_before || event.event_date !== tomorrow) continue;
-      const key = `hms-remind-${event.id}-${tomorrow}`;
-      if (localStorage.getItem(key)) continue;
-      new Notification("מצקה", { body: `מחר: ${event.title}`, icon: "/icon-192.png" });
-      localStorage.setItem(key, "1");
-    }
-  }, [events]);
 
   if (!gate) return null;
   const loading = !tasks || !lists || !classes || !events;

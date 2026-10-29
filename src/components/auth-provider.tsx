@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
+import { PushSync } from "@/components/push-sync";
 import { QuickAdd } from "@/components/quick-add";
 import { TaskEditorProvider } from "@/components/task-editor";
 import { BrandMark, Loader } from "@/components/ui";
@@ -180,6 +181,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           </TaskEditorProvider>
         ) : null}
       </div>
+      {gate ? <PushSync accessToken={gate.session.access_token} /> : null}
       {showNav ? <QuickAdd /> : null}
       {showNav ? (
         <nav className="nav" aria-label="ראשי">

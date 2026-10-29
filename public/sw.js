@@ -1,5 +1,5 @@
 self.addEventListener("push", (event) => {
-  let payload = { title: "מצקה", body: "התראה" };
+  let payload = { title: "מצקה", body: "התראה", url: "/" };
   try {
     if (event.data) payload = { ...payload, ...event.data.json() };
   } catch {
@@ -10,7 +10,7 @@ self.addEventListener("push", (event) => {
       body: payload.body,
       icon: "/icon-192.png",
       badge: "/icon-192.png",
-      data: { url: "/" },
+      data: { url: payload.url || "/" },
     }),
   );
 });
