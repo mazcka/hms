@@ -417,7 +417,7 @@ textarea { min-height: 5.5rem; resize: vertical; }
 .nav {
   position: fixed;
   inset-inline: 0;
-  bottom: calc(0.7rem + env(safe-area-inset-bottom));
+  bottom: calc(0.15rem + env(safe-area-inset-bottom));
   width: min(38rem, calc(100% - 1.25rem));
   margin-inline: auto;
   display: flex;
@@ -834,7 +834,7 @@ li.status-settled {
   position: fixed;
   z-index: 24;
   inset-inline-end: max(0.85rem, calc(50% - 18.4rem));
-  bottom: calc(4.55rem + env(safe-area-inset-bottom));
+  bottom: calc(4rem + env(safe-area-inset-bottom));
   width: 56px;
   height: 56px;
   border: 0;
@@ -856,7 +856,7 @@ li.status-settled {
   position: fixed;
   z-index: 24;
   inset-inline-end: max(0.85rem, calc(50% - 18.4rem));
-  bottom: calc(8.35rem + env(safe-area-inset-bottom));
+  bottom: calc(7.8rem + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
