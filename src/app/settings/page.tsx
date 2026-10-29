@@ -1,6 +1,6 @@
 "use client";
 
-import { Pencil, Trash2, UserRound } from "lucide-react";
+import { Check, Lock, Pencil, Plus, Tag, Trash2, UserRound } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useHousehold } from "@/components/auth-provider";
@@ -139,9 +139,9 @@ export default function SettingsPage() {
       <Alert>{error}</Alert>
 
       <CollapsibleSection storageKey="settings-home" title={<h2>הבית</h2>}>
-        <form className="row" onSubmit={saveHome}>
+        <form className="record" onSubmit={saveHome}>
           <input value={homeName} onChange={(e) => setHomeName(e.target.value)} aria-label="שם הבית" />
-          <button className="btn btn-quiet" type="submit">שמירה</button>
+          <button className="icon-btn" type="submit" aria-label="שמירה" title="שמירה"><Check aria-hidden="true" /></button>
         </form>
       </CollapsibleSection>
 
@@ -169,27 +169,34 @@ export default function SettingsPage() {
             </SwipeRow>
           ))}
         </ul>
-        <form className="row" onSubmit={addPerson}>
+        <form className="record" onSubmit={addPerson}>
           <input value={personName} onChange={(e) => setPersonName(e.target.value)} placeholder="שם" aria-label="שם" />
           <select value={relation} aria-label="קשר" onChange={(e) => setRelation(e.target.value as Person["relation"])}>
             {Object.entries(RELATIONS).map(([value, label]) => (
               <option key={value} value={value}>{label}</option>
             ))}
           </select>
-          <button className="btn btn-quiet" type="submit">הוספה</button>
+          <button className="icon-btn" type="submit" aria-label="הוספה" title="הוספה"><Plus aria-hidden="true" /></button>
         </form>
       </CollapsibleSection>
 
       <CollapsibleSection storageKey="settings-kinds" title={<h2>סוגי אירועים</h2>}>
         <ul className="stack">
           {Object.values(EVENT_KINDS).map((label) => (
-            <li className="spread" key={label}><span>{label}</span><span className="meta">קבוע</span></li>
+            <li className="record record-static" key={label}>
+              <span className="row-mark" aria-hidden="true"><Lock /></span>
+              <div className="row-open">
+                <span>{label}</span>
+                <span className="meta">קבוע</span>
+              </div>
+            </li>
           ))}
           {kinds?.map((kind) => (
             <SwipeRow
               key={kind.id}
               endActions={[{ label: "מחיקה", icon: <Trash2 aria-hidden="true" />, onSelect: () => removeKind(kind), tone: "danger" }]}
             >
+              <span className="row-mark" aria-hidden="true"><Tag /></span>
               <div className="row-open"><span>{kind.label}</span></div>
               <RowMenu label={`פעולות ${kind.label}`}>
                 <MenuItem danger icon={<Trash2 aria-hidden="true" />} onSelect={() => removeKind(kind)}>מחיקה</MenuItem>
@@ -197,9 +204,9 @@ export default function SettingsPage() {
             </SwipeRow>
           ))}
         </ul>
-        <form className="row" onSubmit={addKind}>
+        <form className="record" onSubmit={addKind}>
           <input value={kindLabel} onChange={(e) => setKindLabel(e.target.value)} placeholder="סוג חדש" aria-label="סוג חדש" />
-          <button className="btn btn-quiet" type="submit">הוספה</button>
+          <button className="icon-btn" type="submit" aria-label="הוספה" title="הוספה"><Plus aria-hidden="true" /></button>
         </form>
         {kinds === null ? null : <p className="note">יום הולדת, תור ואחר תמיד זמינים. סוגים שמוסיפים כאן מופיעים בטופס אירוע.</p>}
       </CollapsibleSection>
@@ -208,13 +215,14 @@ export default function SettingsPage() {
         <ul className="stack">
           {gate.members.map((member) => (
             <li key={member.id}>
-              <form className="row" onSubmit={(event) => { event.preventDefault(); saveMember(member.id); }}>
+              <form className="record" onSubmit={(event) => { event.preventDefault(); saveMember(member.id); }}>
+                <span className="row-mark" aria-hidden="true"><UserRound /></span>
                 <input
                   aria-label={`שם של ${member.display_name}`}
                   value={names[member.id] ?? member.display_name}
                   onChange={(e) => setNames({ ...names, [member.id]: e.target.value })}
                 />
-                <button className="btn btn-quiet" type="submit">שמירה</button>
+                <button className="icon-btn" type="submit" aria-label="שמירה" title="שמירה"><Check aria-hidden="true" /></button>
               </form>
             </li>
           ))}

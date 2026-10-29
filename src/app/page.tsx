@@ -213,7 +213,7 @@ export default function WeekPage() {
       <ul className="stack">
         {(events ?? []).map((event) => (
           <li key={event.id}>
-            <button className="row-line spread" type="button" onClick={() => setPeek({ kind: "event", row: event })}>
+            <button className="row-line row-line-fill spread" type="button" onClick={() => setPeek({ kind: "event", row: event })}>
               <span className="row-mark" aria-hidden="true"><Calendar /></span>
               <span>{event.title}</span>
               <span className="meta">{event.event_date.slice(8, 10)}/{event.event_date.slice(5, 7)}{event.event_time ? ` ${event.event_time.slice(0, 5)}` : ""}</span>
