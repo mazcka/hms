@@ -7,7 +7,6 @@ import { useHousehold } from "@/components/auth-provider";
 import { CollapsibleSection } from "@/components/collapsible-section";
 import { MasonryGrid } from "@/components/masonry-grid";
 import { PlaceNav } from "@/components/place-nav";
-import { PushTest } from "@/components/push-test";
 import { Sheet } from "@/components/sheet";
 import { TaskLine } from "@/components/task-line";
 import { SwipeRow } from "@/components/swipe-row";
@@ -228,7 +227,6 @@ export default function WeekPage() {
         lede={`${WEEKDAYS[new Date().getDay()]}, ${new Intl.DateTimeFormat("he-IL", { day: "numeric", month: "long" }).format(new Date())}`}
       />
       <Alert>{error}</Alert>
-      <PushTest />
       <MasonryGrid>
         {hasClasses ? classesCard : null}
         {hasEvents ? eventsCard : null}
