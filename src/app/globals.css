@@ -93,7 +93,7 @@ button, a, input, select, textarea { font: inherit; }
 .brand-lockup .brand-mark { width: 44px; height: 44px; }
 .brand-lockup h1 { margin: 0; }
 .app-main {
-  width: min(42rem, 100%);
+  width: min(60rem, 100%);
   margin: 0 auto;
   padding: var(--space-lg) var(--space-md) calc(var(--nav-h) + var(--space-xl) + env(safe-area-inset-bottom));
 }
