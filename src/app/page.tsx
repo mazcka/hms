@@ -341,7 +341,7 @@ export default function WeekPage() {
                         onSelect: () => toggleBought(item),
                       }]}
                       endActions={[
-                        { label: "עריכה", icon: <Pencil aria-hidden="true" />, onSelect: () => startEdit(item, list.id) },
+                        { label: "עריכה", icon: <Pencil aria-hidden="true" />, onSelect: () => startEdit(item, list.id), tone: "quiet" },
                         { label: "מחיקה", icon: <Trash2 aria-hidden="true" />, onSelect: () => removeItem(item), tone: "danger" },
                       ]}
                     >

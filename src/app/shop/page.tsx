@@ -449,7 +449,7 @@ export default function ShopPage() {
                       onSelect: () => toggle(item),
                     }]}
                     endActions={[
-                      { label: "עריכה", icon: <Pencil aria-hidden="true" />, onSelect: () => startEdit(item, list.id) },
+                      { label: "עריכה", icon: <Pencil aria-hidden="true" />, onSelect: () => startEdit(item, list.id), tone: "quiet" },
                       {
                         label: "מחיקה",
                         icon: <Trash2 aria-hidden="true" />,

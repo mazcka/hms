@@ -648,6 +648,8 @@ li.status-settled {
   overflow-wrap: anywhere;
 }
 .swipe-action svg { width: 18px; height: 18px; }
+.swipe-action-neutral { color: var(--color-on-secondary); background: var(--color-secondary); }
+.swipe-action-quiet { color: #f7f4ef; background: #6d5646; }
 .swipe-action-warning { color: var(--color-on-accent); background: var(--color-accent); }
 .swipe-action-danger { color: var(--color-on-destructive); background: var(--color-destructive); }
 .swipe-action:focus-visible { outline-offset: -3px; }

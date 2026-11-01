@@ -15,6 +15,7 @@ export function TaskLine({ task }: { task: Task }) {
   if (!gate) return null;
   const assignee = gate.members.find((member) => member.id === task.assignee_id);
   const done = task.status === "done";
+  const active = task.status === "in_progress";
 
   async function mark(status: Task["status"]) {
     await editor.setStatus(task, status);
@@ -30,18 +31,25 @@ export function TaskLine({ task }: { task: Task }) {
           icon: done ? <Circle aria-hidden="true" /> : <Check aria-hidden="true" />,
           onSelect: () => mark("done"),
         },
-        {
-          label: "בטיפול",
-          icon: <Clock3 aria-hidden="true" />,
-          onSelect: () => mark("in_progress"),
-          tone: "warning",
-        },
+        active
+          ? {
+              label: "פתוחה",
+              icon: <Circle aria-hidden="true" />,
+              onSelect: () => mark("open"),
+              tone: "neutral",
+            }
+          : {
+              label: "בטיפול",
+              icon: <Clock3 aria-hidden="true" />,
+              onSelect: () => mark("in_progress"),
+              tone: "warning" as const,
+            },
       ]}
       endActions={[
-        { label: "עריכה", icon: <Pencil aria-hidden="true" />, onSelect: () => editor.open(task) },
+        { label: "עריכה", icon: <Pencil aria-hidden="true" />, onSelect: () => editor.open(task), tone: "quiet" },
         { label: "מחיקה", icon: <Trash2 aria-hidden="true" />, onSelect: () => editor.remove(task), tone: "danger" },
       ]}
-      tone={done ? "settled" : task.status === "in_progress" ? "active" : "quiet"}
+      tone={done ? "settled" : active ? "active" : "quiet"}
     >
       <IconButton
         className="icon-btn-done"
@@ -57,7 +65,11 @@ export function TaskLine({ task }: { task: Task }) {
         {when ? <span className="meta">{when}</span> : null}
       </button>
       <RowMenu>
-        <MenuItem icon={<Clock3 aria-hidden="true" />} onSelect={() => mark("in_progress")}>בטיפול</MenuItem>
+        {active ? (
+          <MenuItem icon={<Circle aria-hidden="true" />} onSelect={() => mark("open")}>פתוחה</MenuItem>
+        ) : (
+          <MenuItem icon={<Clock3 aria-hidden="true" />} onSelect={() => mark("in_progress")}>בטיפול</MenuItem>
+        )}
         <MenuItem icon={<Pencil aria-hidden="true" />} onSelect={() => editor.open(task)}>עריכה</MenuItem>
         <MenuItem danger icon={<Trash2 aria-hidden="true" />} onSelect={() => editor.remove(task)}>מחיקה</MenuItem>
       </RowMenu>

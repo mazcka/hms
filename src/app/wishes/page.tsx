@@ -103,7 +103,7 @@ function WishRow({
         { label: "הבא", icon: <Check aria-hidden="true" />, onSelect: () => onStatus(row, next[row.status]) },
       ]}
       endActions={[
-        { label: "עריכה", icon: <Pencil aria-hidden="true" />, onSelect: () => onEdit(row) },
+        { label: "עריכה", icon: <Pencil aria-hidden="true" />, onSelect: () => onEdit(row), tone: "quiet" },
         { label: "מחיקה", icon: <Trash2 aria-hidden="true" />, onSelect: () => onRemove(row.id), tone: "danger" },
       ]}
     >

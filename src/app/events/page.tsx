@@ -67,7 +67,7 @@ function EventGroup({
           <SwipeRow
             key={row.id}
             endActions={[
-              { label: "עריכה", icon: <Pencil aria-hidden="true" />, onSelect: () => onEdit(row) },
+              { label: "עריכה", icon: <Pencil aria-hidden="true" />, onSelect: () => onEdit(row), tone: "quiet" },
               { label: "מחיקה", icon: <Trash2 aria-hidden="true" />, onSelect: () => onRemove(row.id), tone: "danger" },
             ]}
           >

@@ -12,10 +12,10 @@ export type SwipeAction = {
   label: string;
   icon: ReactNode;
   onSelect: () => void | Promise<void>;
-  tone?: "primary" | "warning" | "danger";
+  tone?: "primary" | "warning" | "danger" | "neutral" | "quiet";
 };
 
-const ACTION_WIDTH = 76;
+const ACTION_WIDTH = 60;
 const DRAG_SLOP = 8;
 
 export function SwipeRow({

@@ -164,7 +164,7 @@ export default function SettingsPage() {
             <SwipeRow
               key={person.id}
               endActions={[
-                { label: "עריכה", icon: <Pencil aria-hidden="true" />, onSelect: () => setEditing(person) },
+                { label: "עריכה", icon: <Pencil aria-hidden="true" />, onSelect: () => setEditing(person), tone: "quiet" },
                 { label: "מחיקה", icon: <Trash2 aria-hidden="true" />, onSelect: () => removePerson(person.id), tone: "danger" },
               ]}
             >
