@@ -11,7 +11,7 @@ import { PlaceNav } from "@/components/place-nav";
 import { Sheet } from "@/components/sheet";
 import { TaskLine } from "@/components/task-line";
 import { SwipeRow } from "@/components/swipe-row";
-import { Alert, Empty, ItemLabel, PageHead, PersonLink, Skeleton } from "@/components/ui";
+import { Empty, ItemLabel, PageHead, PersonLink, Skeleton } from "@/components/ui";
 import { classDays } from "@/components/weekday-picker";
 import { WEEKDAYS, addDaysIso, eventKindLabel, formatDate, todayIso } from "@/lib/labels";
 import { HMS_REFRESH, TASK_FIELDS, arrangeTasks, notifyRefresh, type Task } from "@/lib/task";
@@ -45,7 +45,6 @@ type Peek = { kind: "class"; row: ClassRow } | { kind: "event"; row: EventRow };
 
 export default function WeekPage() {
   const gate = useHousehold();
-  const [error, setError] = useState("");
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [lists, setLists] = useState<List[] | null>(null);
   const [classes, setClasses] = useState<ClassRow[] | null>(null);
@@ -72,7 +71,7 @@ export default function WeekPage() {
       ]).then(([t, s, c, p, e, k]) => {
         if (!active) return;
         const message = t.error?.message || s.error?.message || c.error?.message || p.error?.message || e.error?.message;
-        if (message) setError(message);
+        if (message) showNotice({ tone: "error", text: "לא הצלחנו לטעון את היום. נסה שוב." });
         setTasks(arrangeTasks((t.data ?? []) as Task[]));
         setLists((s.data ?? []) as List[]);
         setClasses((c.data ?? []) as ClassRow[]);
@@ -165,7 +164,7 @@ export default function WeekPage() {
     const rawQuantity = editing.quantity.replace(",", ".").trim();
     const quantity = rawQuantity === "" ? null : Number(rawQuantity);
     if (!name || !editing.listId || (quantity != null && !Number.isFinite(quantity))) {
-      setError("חסרים שם או קטגוריה");
+      showNotice({ tone: "error", text: "חסרים שם או קטגוריה." });
       return;
     }
     const { error: writeError } = await gate.supabase.from("hms_shop_items").update({
@@ -252,7 +251,6 @@ export default function WeekPage() {
         title="היום"
         lede={`${WEEKDAYS[new Date().getDay()]}, ${new Intl.DateTimeFormat("he-IL", { day: "numeric", month: "long" }).format(new Date())}`}
       />
-      <Alert>{error}</Alert>
       <section className="home-overview" aria-labelledby="home-overview-title">
         <h2 id="home-overview-title">{overviewTitle}</h2>
         <p>{overviewLede}</p>

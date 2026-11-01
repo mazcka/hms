@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import { useActionNotice } from "@/components/action-notice";
 import { useHousehold } from "@/components/auth-provider";
 import { CollapsibleSection } from "@/components/collapsible-section";
-import { Alert, Empty, Loader, PageHead } from "@/components/ui";
-import { RELATIONS, WEEKDAYS, WISH_STATUS, eventKindLabel, formatDate } from "@/lib/labels";
+import { Empty, PageHead, Skeleton } from "@/components/ui";
+import { RELATIONS, WEEKDAYS, WISH_STATUS, eventKindLabel, formatDate, todayIso } from "@/lib/labels";
 
 type Person = { id: string; name: string; relation: keyof typeof RELATIONS };
 type ClassRow = { id: string; name: string; weekday: number; weekdays: number[] | null; starts_at: string; place: string | null };
@@ -13,15 +14,20 @@ type Kind = { id: string; label: string };
 type EventRow = { id: string; title: string; kind: string; event_date: string };
 type Wish = { id: string; title: string; status: keyof typeof WISH_STATUS };
 
+function classDays(row: ClassRow) {
+  return row.weekdays?.length ? row.weekdays : [row.weekday];
+}
+
 export default function PersonPage() {
   const { id } = useParams<{ id: string }>();
   const gate = useHousehold();
+  const { showNotice } = useActionNotice();
   const [person, setPerson] = useState<Person | null>(null);
   const [classes, setClasses] = useState<ClassRow[] | null>(null);
   const [events, setEvents] = useState<EventRow[] | null>(null);
   const [kinds, setKinds] = useState<Kind[]>([]);
   const [wishes, setWishes] = useState<Wish[] | null>(null);
-  const [error, setError] = useState("");
+  const [missing, setMissing] = useState(false);
 
   useEffect(() => {
     if (!gate || !id) return;
@@ -34,8 +40,10 @@ export default function PersonPage() {
       gate.supabase.from("hms_event_kinds").select("id, label").eq("household_id", gate.member.household_id),
     ]).then(([p, c, e, w, k]) => {
       if (!active) return;
-      setError(p.error?.message || c.error?.message || e.error?.message || w.error?.message || "");
-      setPerson((p.data ?? null) as Person | null);
+      if (p.error || c.error || e.error || w.error) showNotice({ tone: "error", text: "לא הצלחנו לטעון את האדם. נסה שוב." });
+      const found = (p.data ?? null) as Person | null;
+      setPerson(found);
+      setMissing(!found);
       setClasses((c.data ?? []) as ClassRow[]);
       setEvents((e.data ?? []) as EventRow[]);
       setWishes((w.data ?? []) as Wish[]);
@@ -44,43 +52,81 @@ export default function PersonPage() {
     return () => {
       active = false;
     };
-  }, [gate, id]);
+  }, [gate, id, showNotice]);
 
   if (!gate) return null;
-  if (!person && !error && !classes) return <Loader />;
+  if (!person && !missing && !classes) return <Skeleton rows={4} />;
   if (!person) return <Empty title="האדם לא נמצא" />;
+
+  const today = todayIso();
+  const later = (events ?? []).filter((row) => row.event_date >= today);
+  const past = (events ?? []).filter((row) => row.event_date < today);
+  const openWishes = (wishes ?? []).filter((row) => row.status !== "bought");
+  const boughtWishes = (wishes ?? []).filter((row) => row.status === "bought");
+  const empty = !(classes?.length || events?.length || wishes?.length);
 
   return (
     <>
       <PageHead title={person.name} lede={RELATIONS[person.relation]} />
-      <Alert>{error}</Alert>
-      <CollapsibleSection storageKey={`person-${id}-classes`} title={<h2>חוגים</h2>} className="tone tone-classes">
-        {classes?.length === 0 ? <Empty title="אין חוגים" /> : null}
-        <ul className="stack">
-          {classes?.map((row) => (
-            <li key={row.id}>{(row.weekdays?.length ? row.weekdays : [row.weekday]).map((day) => WEEKDAYS[day]).join(", ")} · {row.starts_at.slice(0, 5)} · {row.name}</li>
-          ))}
-        </ul>
-      </CollapsibleSection>
-      <CollapsibleSection storageKey={`person-${id}-events`} title={<h2>אירועים</h2>} className="tone tone-events">
-        {events?.length === 0 ? <Empty title="אין אירועים" /> : null}
-        <ul className="stack">
-          {events?.map((row) => (
-            <li key={row.id}>{formatDate(row.event_date)} · {eventKindLabel(row.kind, kinds)} · {row.title}</li>
-          ))}
-        </ul>
-      </CollapsibleSection>
-      <CollapsibleSection storageKey={`person-${id}-wishes`} title={<h2>משאלות</h2>} className="tone tone-wishes">
-        {wishes?.length === 0 ? <Empty title="אין משאלות" /> : null}
-        <ul className="stack">
-          {wishes?.map((row) => (
-            <li key={row.id} className={`spread status-${row.status === "bought" ? "settled" : row.status === "planned" ? "active" : "quiet"}`}>
-              <span>{row.title}</span>
-              <span className="chip">{WISH_STATUS[row.status]}</span>
-            </li>
-          ))}
-        </ul>
-      </CollapsibleSection>
+      {empty ? <Empty title="אין עדיין חוגים, אירועים או משאלות" /> : null}
+      {classes && classes.length > 0 ? (
+        <CollapsibleSection storageKey={`person-${id}-classes`} title={<h2>חוגים</h2>} action={<span className="meta">{classes.length}</span>} className="panel">
+          <ul className="stack">
+            {classes.map((row) => (
+              <li key={row.id} className="record-static">
+                <div className="row-open">
+                  <span>{row.name}</span>
+                  <span className="meta">
+                    {classDays(row).map((day) => WEEKDAYS[day]).join(" · ")}
+                    {` · ${row.starts_at.slice(0, 5)}`}
+                    {row.place ? ` · ${row.place}` : ""}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </CollapsibleSection>
+      ) : null}
+      {later.length > 0 || past.length > 0 ? (
+        <CollapsibleSection storageKey={`person-${id}-events`} title={<h2>אירועים</h2>} action={<span className="meta">{later.length || past.length}</span>} className="panel">
+          <ul className="stack">
+            {later.map((row) => (
+              <li key={row.id} className="record-static">
+                <div className="row-open">
+                  <span>{row.title}</span>
+                  <span className="meta">{eventKindLabel(row.kind, kinds)} · {formatDate(row.event_date)}</span>
+                </div>
+              </li>
+            ))}
+            {past.map((row) => (
+              <li key={row.id} className="record-static status-settled">
+                <div className="row-open">
+                  <span>{row.title}</span>
+                  <span className="meta">{eventKindLabel(row.kind, kinds)} · {formatDate(row.event_date)}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </CollapsibleSection>
+      ) : null}
+      {openWishes.length > 0 || boughtWishes.length > 0 ? (
+        <CollapsibleSection storageKey={`person-${id}-wishes`} title={<h2>משאלות</h2>} action={<span className="meta">{openWishes.length || boughtWishes.length}</span>} className="panel">
+          <ul className="stack">
+            {openWishes.map((row) => (
+              <li key={row.id} className="spread">
+                <span>{row.title}</span>
+                <span className="chip">{WISH_STATUS[row.status]}</span>
+              </li>
+            ))}
+            {boughtWishes.map((row) => (
+              <li key={row.id} className="spread status-settled">
+                <span className="bought">{row.title}</span>
+                <span className="chip">{WISH_STATUS[row.status]}</span>
+              </li>
+            ))}
+          </ul>
+        </CollapsibleSection>
+      ) : null}
     </>
   );
 }

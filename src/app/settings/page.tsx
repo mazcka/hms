@@ -9,7 +9,7 @@ import { CollapsibleSection } from "@/components/collapsible-section";
 import { MenuItem, RowMenu } from "@/components/menu";
 import { Sheet } from "@/components/sheet";
 import { SwipeRow } from "@/components/swipe-row";
-import { Empty, PageHead, Skeleton } from "@/components/ui";
+import { Empty, PageHead, PersonLink, Skeleton } from "@/components/ui";
 import { EVENT_KINDS, RELATIONS } from "@/lib/labels";
 
 type Person = { id: string; name: string; relation: keyof typeof RELATIONS };
@@ -168,11 +168,11 @@ export default function SettingsPage() {
                 { label: "מחיקה", icon: <Trash2 aria-hidden="true" />, onSelect: () => removePerson(person.id), tone: "danger" },
               ]}
             >
-              <span className="row-mark" aria-hidden="true"><UserRound /></span>
-              <div className="row-open">
+              <button className="row-open" type="button" onClick={() => setEditing(person)}>
                 <span>{person.name}</span>
                 <span className="meta">{RELATIONS[person.relation]}</span>
-              </div>
+              </button>
+              <PersonLink id={person.id} name={person.name} people={people ?? []} />
               <RowMenu label={`פעולות ${person.name}`}>
                 <MenuItem icon={<Pencil aria-hidden="true" />} onSelect={() => setEditing(person)}>עריכה</MenuItem>
                 <MenuItem danger icon={<Trash2 aria-hidden="true" />} onSelect={() => removePerson(person.id)}>מחיקה</MenuItem>
