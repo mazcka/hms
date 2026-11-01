@@ -1090,6 +1090,70 @@ details > summary {
   color: var(--ink);
   border-color: var(--color-border);
 }
+.home-overview {
+  margin-bottom: var(--space-lg);
+  padding: var(--space-md) 1.15rem;
+  border: 1px solid color-mix(in srgb, var(--color-primary) 22%, var(--color-border));
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-card));
+  box-shadow: 0 8px 24px rgba(31, 107, 74, 0.08);
+}
+.home-overview h2 {
+  margin: 0 0 0.25rem;
+  font-family: var(--display);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+.home-overview p {
+  margin: 0;
+  max-width: 42ch;
+  color: color-mix(in srgb, var(--color-primary) 68%, var(--color-foreground));
+  font-size: var(--text-sm);
+}
+.home-board {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+.home-board-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  align-items: start;
+}
+.home-board-row > .card { margin-bottom: 0; }
+.home-board-row-single { grid-template-columns: 1fr; }
+@media (min-width: 721px) {
+  .home-board-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .home-board-row-single { grid-template-columns: 1fr; }
+}
+.home-now {
+  padding: 1rem 1.15rem;
+  border: 1px solid color-mix(in srgb, var(--color-accent) 34%, var(--color-border));
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-accent) 12%, var(--color-card));
+  box-shadow: 0 8px 22px rgba(196, 161, 90, 0.12);
+}
+.home-now h2 {
+  margin: 0 0 0.65rem;
+  font-family: var(--display);
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+.home-now .stack > li { min-height: 3.5rem; }
+.home-now .row-mark {
+  background: color-mix(in srgb, var(--color-accent) 22%, var(--color-card));
+  color: color-mix(in srgb, var(--color-accent) 55%, var(--color-foreground));
+}
+.home-later {
+  background: color-mix(in srgb, var(--color-card) 88%, var(--color-muted));
+}
+.home-later-more {
+  display: inline-flex;
+  margin-top: var(--space-sm);
+  font-size: var(--text-sm);
+}
 .bento {
   display: grid;
   grid-template-columns: 1.25fr 0.85fr;
