@@ -105,7 +105,7 @@ export function SwipeRow({
     return (
       <div
         className={`swipe-actions swipe-actions-${side}`}
-        style={{ width }}
+        style={{ width: width || trayLimit(items.length) }}
         aria-hidden={open ? undefined : true}
         aria-label={side === "start" ? "פעולות בהחלקה ימינה" : "פעולות בהחלקה שמאלה"}
       >
@@ -126,18 +126,16 @@ export function SwipeRow({
     );
   }
 
-  const startReveal = offset > 0 ? offset : 0;
-  const endReveal = offset < 0 ? -offset : 0;
-
   return (
     <li
       ref={rowRef}
       data-drag-row={sortable ? "" : undefined}
       className={`swipe-row ${offset ? "swipe-row-open" : ""} ${dragging ? "swipe-row-dragging" : ""} ${className}`.trim()}
     >
-      {actions(startActions, "start", startReveal)}
+      {actions(startActions, "start", startWidth)}
       <div
         className={`swipe-content status-${tone} ${dragging ? "swipe-content-dragging" : ""}`}
+        style={{ transform: `translate3d(${offset}px, 0, 0)` }}
         onPointerDown={begin}
         onPointerMove={move}
         onPointerUp={finish}
@@ -152,7 +150,7 @@ export function SwipeRow({
       >
         {children}
       </div>
-      {actions(endActions, "end", endReveal)}
+      {actions(endActions, "end", endWidth)}
     </li>
   );
 }

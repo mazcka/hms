@@ -19,11 +19,11 @@ export function PageHead({
       <div className="page-title">
         {pathname !== "/" ? (
           <Link className="home-back" href="/" aria-label="היום">
-            <BrandMark />
+            <BrandMark size={32} />
           </Link>
         ) : (
           <span className="home-mark" aria-hidden="true">
-            <BrandMark />
+            <BrandMark size={32} />
           </span>
         )}
         <div>
