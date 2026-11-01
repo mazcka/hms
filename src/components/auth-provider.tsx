@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from "react";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
+import { ActionNoticeProvider } from "@/components/action-notice";
 import { QuickAdd } from "@/components/quick-add";
 import { TaskEditorProvider } from "@/components/task-editor";
 import { BrandMark, Loader } from "@/components/ui";
@@ -175,9 +176,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ) : null}
         {error && member ? <p className="alert" role="alert">{error}</p> : null}
         {supabase && ready && (pathname === "/login" || gate) ? (
-          <TaskEditorProvider>
-            {children}
-          </TaskEditorProvider>
+          <ActionNoticeProvider>
+            <TaskEditorProvider>
+              {children}
+            </TaskEditorProvider>
+          </ActionNoticeProvider>
         ) : null}
       </div>
       {showNav ? <QuickAdd /> : null}

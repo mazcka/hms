@@ -1,10 +1,12 @@
 "use client";
 
-import { Calendar, CalendarDays, Check, Pencil, ShoppingBag, Trash2 } from "lucide-react";
+import { Calendar, CalendarDays, Check, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
+import { useActionNotice } from "@/components/action-notice";
 import { useHousehold } from "@/components/auth-provider";
 import { CollapsibleSection } from "@/components/collapsible-section";
+import { IconButton, MenuItem, RowMenu } from "@/components/menu";
 import { PlaceNav } from "@/components/place-nav";
 import { Sheet } from "@/components/sheet";
 import { TaskLine } from "@/components/task-line";
@@ -50,6 +52,7 @@ export default function WeekPage() {
   const [people, setPeople] = useState<Person[]>([]);
   const [events, setEvents] = useState<EventRow[] | null>(null);
   const [kinds, setKinds] = useState<Kind[]>([]);
+  const { showNotice } = useActionNotice();
   const [editing, setEditing] = useState<ShopEdit | null>(null);
   const [peek, setPeek] = useState<Peek | null>(null);
 
@@ -116,9 +119,7 @@ export default function WeekPage() {
     return item.unit ?? "";
   }
 
-  async function toggleBought(item: Item) {
-    if (!gate) return;
-    const bought = !item.bought;
+  function applyBought(item: Item, bought: boolean) {
     setLists((current) =>
       (current ?? []).map((list) => ({
         ...list,
@@ -127,9 +128,24 @@ export default function WeekPage() {
         ),
       })),
     );
+  }
+
+  async function toggleBought(item: Item) {
+    if (!gate) return;
+    const bought = !item.bought;
+    applyBought(item, bought);
     const { error: writeError } = await gate.supabase.from("hms_shop_items").update({ bought }).eq("id", item.id);
-    if (writeError) setError(writeError.message);
-    else notifyRefresh();
+    if (writeError) {
+      applyBought(item, item.bought);
+      showNotice({ tone: "error", text: "לא הצלחנו לעדכן את הפריט. נסה שוב." });
+      return;
+    }
+    showNotice({
+      tone: "ok",
+      text: bought ? `${item.name} סומן כנקנה.` : `${item.name} חזר לרשימה.`,
+      undo: () => toggleBought({ ...item, bought }),
+    });
+    notifyRefresh();
   }
 
   function startEdit(item: Item, listId: string) {
@@ -158,9 +174,10 @@ export default function WeekPage() {
       one_off: editing.oneOff,
       list_id: editing.listId,
     }).eq("id", editing.id);
-    if (writeError) setError(writeError.message);
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו לשמור את השינוי. נסה שוב." });
     else {
       setEditing(null);
+      showNotice({ tone: "ok", text: `${name} עודכן.` });
       notifyRefresh();
     }
   }
@@ -168,8 +185,11 @@ export default function WeekPage() {
   async function removeItem(item: Item) {
     if (!gate || !window.confirm(`למחוק את "${item.name}" מהרשימה?`)) return;
     const { error: writeError } = await gate.supabase.from("hms_shop_items").delete().eq("id", item.id);
-    if (writeError) setError(writeError.message);
-    else notifyRefresh();
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו למחוק את הפריט. נסה שוב." });
+    else {
+      showNotice({ tone: "ok", text: `${item.name} נמחק מהרשימה.` });
+      notifyRefresh();
+    }
   }
 
   const visibleTasks = (tasks ?? []).filter((task) => task.status !== "done");
@@ -318,11 +338,21 @@ export default function WeekPage() {
                         { label: "מחיקה", icon: <Trash2 aria-hidden="true" />, onSelect: () => removeItem(item), tone: "danger" },
                       ]}
                     >
-                      <span className="row-mark" aria-hidden="true"><ShoppingBag /></span>
+                      <IconButton
+                        className="icon-btn-done"
+                        label={`סימון ${item.name} כנקנה`}
+                        onClick={() => toggleBought(item)}
+                      >
+                        <Check aria-hidden="true" />
+                      </IconButton>
                       <div className="row-open shop-pair">
                         <span className="shop-amount">{formatAmount(item) || "–"}</span>
                         <ItemLabel value={item.name} />
                       </div>
+                      <RowMenu>
+                        <MenuItem icon={<Pencil aria-hidden="true" />} onSelect={() => startEdit(item, list.id)}>עריכה</MenuItem>
+                        <MenuItem danger icon={<Trash2 aria-hidden="true" />} onSelect={() => removeItem(item)}>מחיקה</MenuItem>
+                      </RowMenu>
                     </SwipeRow>
                   ))}
                 </ul>

@@ -9,6 +9,7 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
+import { useActionNotice } from "@/components/action-notice";
 import { useHousehold } from "@/components/auth-provider";
 import { IconButton } from "@/components/menu";
 import { TASK_STATUS, WEEKDAYS } from "@/lib/labels";
@@ -40,6 +41,7 @@ const blank = {
 
 export function TaskEditorProvider({ children }: { children: ReactNode }) {
   const gate = useHousehold();
+  const { showNotice } = useActionNotice();
   const [task, setTask] = useState<Task | null>(null);
   const [form, setForm] = useState(blank);
   const [error, setError] = useState("");
@@ -69,9 +71,20 @@ export function TaskEditorProvider({ children }: { children: ReactNode }) {
       .update({ status: next, updated_at: new Date().toISOString() })
       .eq("id", current.id);
     if (writeError) {
-      setError(writeError.message);
+      showNotice({ tone: "error", text: "לא הצלחנו לעדכן את המשימה. נסה שוב." });
       return;
     }
+    const text =
+      next === "done"
+        ? `${current.title} סומנה כבוצעה.`
+        : next === "in_progress"
+          ? `${current.title} עברה לטיפול.`
+          : `${current.title} חזרה לפתוחה.`;
+    showNotice({
+      tone: "ok",
+      text,
+      undo: () => setStatus({ ...current, status: next }, current.status),
+    });
     notifyTasksChanged();
   }
 
@@ -79,9 +92,10 @@ export function TaskEditorProvider({ children }: { children: ReactNode }) {
     if (!gate || !window.confirm(`למחוק את המשימה "${current.title}"?`)) return;
     const { error: writeError } = await gate.supabase.from("hms_tasks").delete().eq("id", current.id);
     if (writeError) {
-      setError(writeError.message);
+      showNotice({ tone: "error", text: "לא הצלחנו למחוק את המשימה. נסה שוב." });
       return;
     }
+    showNotice({ tone: "ok", text: `${current.title} נמחקה.` });
     notifyTasksChanged();
   }
 
@@ -109,10 +123,11 @@ export function TaskEditorProvider({ children }: { children: ReactNode }) {
       .eq("id", task.id);
     setPending(false);
     if (writeError) {
-      setError(writeError.message);
+      showNotice({ tone: "error", text: "לא הצלחנו לשמור את המשימה. נסה שוב." });
       return;
     }
     setTask(null);
+    showNotice({ tone: "ok", text: `${form.title.trim()} עודכנה.` });
     notifyTasksChanged();
   }
 
@@ -133,10 +148,11 @@ export function TaskEditorProvider({ children }: { children: ReactNode }) {
     }
     const { error: writeError } = await gate.supabase.from("hms_tasks").delete().eq("id", task.id);
     if (writeError) {
-      setError(writeError.message);
+      showNotice({ tone: "error", text: "לא הצלחנו למחוק את המשימה. נסה שוב." });
       return;
     }
     setTask(null);
+    showNotice({ tone: "ok", text: `${task.title} נמחקה.` });
     notifyTasksChanged();
   }
 
