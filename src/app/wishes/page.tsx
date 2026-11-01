@@ -232,7 +232,7 @@ export default function WishesPage() {
                   <span className={row.status === "bought" ? "bought" : undefined}>{row.title}</span>
                   <span className="meta">
                     {WISH_STATUS[row.status]}
-                    {row.for_person_id ? <PersonLink id={row.for_person_id} name={people.find((p) => p.id === row.for_person_id)?.name ?? ""} /> : null}
+                    {row.for_person_id ? <PersonLink id={row.for_person_id} name={people.find((p) => p.id === row.for_person_id)?.name ?? ""} people={people} /> : null}
                     {row.url ? <a href={row.url}>קישור</a> : null}
                   </span>
                 </div>

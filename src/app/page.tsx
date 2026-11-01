@@ -279,7 +279,7 @@ export default function WeekPage() {
                       {item.kind === "class" ? item.row.name : item.row.title}
                     </span>
                   </button>
-                  {item.kind === "class" ? <PersonLink id={item.row.person_id} name={personName(item.row.person_id)} /> : null}
+                  {item.kind === "class" ? <PersonLink id={item.row.person_id} name={personName(item.row.person_id)} people={people} /> : null}
                 </li>
               ))}
             </ul>
@@ -402,7 +402,7 @@ export default function WeekPage() {
               {formatDate(peek.row.event_date)}
               {peek.row.event_time ? ` · ${peek.row.event_time.slice(0, 5)}` : ""}
             </p>
-            {peek.row.person_id ? <PersonLink id={peek.row.person_id} name={personName(peek.row.person_id)} /> : null}
+            {peek.row.person_id ? <PersonLink id={peek.row.person_id} name={personName(peek.row.person_id)} people={people} /> : null}
             {peek.row.place ? <PlaceNav place={peek.row.place} /> : null}
             {peek.row.notes ? <p>{peek.row.notes}</p> : null}
             {peek.row.remind_day_before ? <p className="meta">תזכורת יום לפני</p> : null}

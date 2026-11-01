@@ -1,18 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { CalendarDays, Pause, Pencil, Play, Trash2 } from "lucide-react";
+import { Pause, Pencil, Play, Trash2 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
+import { useActionNotice } from "@/components/action-notice";
 import { useHousehold } from "@/components/auth-provider";
-import { CollapsibleSection } from "@/components/collapsible-section";
 import { PlaceField } from "@/components/place-field";
 import { MenuItem, RowMenu } from "@/components/menu";
 import { SectionTabs } from "@/components/section-tabs";
 import { Sheet } from "@/components/sheet";
-import { SwipeRow } from "@/components/swipe-row";
-import { Alert, Empty, PageHead, PersonLink, Skeleton } from "@/components/ui";
+import { Empty, PageHead, PersonLink, Skeleton } from "@/components/ui";
 import { classDays, WeekdayPicker } from "@/components/weekday-picker";
 import { WEEKDAYS } from "@/lib/labels";
+import { notifyRefresh } from "@/lib/task";
 
 type Person = { id: string; name: string };
 type ClassRow = {
@@ -27,14 +27,18 @@ type ClassRow = {
   active: boolean;
 };
 
+function byStart(a: ClassRow, b: ClassRow) {
+  return a.starts_at.localeCompare(b.starts_at);
+}
+
 export default function ClassesPage() {
   const gate = useHousehold();
+  const { showNotice } = useActionNotice();
   const [people, setPeople] = useState<Person[]>([]);
   const [rows, setRows] = useState<ClassRow[] | null>(null);
   const [form, setForm] = useState({ person_id: "", name: "", weekdays: [0] as number[], starts_at: "", ends_at: "", place: "" });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(false);
-  const [error, setError] = useState("");
 
   async function load() {
     if (!gate) return;
@@ -42,7 +46,7 @@ export default function ClassesPage() {
       gate.supabase.from("hms_people").select("id, name").eq("household_id", gate.member.household_id).order("name"),
       gate.supabase.from("hms_classes").select("id, person_id, name, weekday, weekdays, starts_at, ends_at, place, active").eq("household_id", gate.member.household_id).order("starts_at"),
     ]);
-    if (p.error || c.error) setError(p.error?.message || c.error?.message || "");
+    if (p.error || c.error) showNotice({ tone: "error", text: "לא הצלחנו לטעון את החוגים. נסה שוב." });
     setPeople((p.data ?? []) as Person[]);
     setRows((c.data ?? []) as ClassRow[]);
   }
@@ -63,7 +67,7 @@ export default function ClassesPage() {
     event.preventDefault();
     if (!gate) return;
     if (!form.person_id || !form.name.trim() || !form.starts_at || form.weekdays.length === 0) {
-      setError("צריך אדם, שם חוג, יום ושעת התחלה.");
+      showNotice({ tone: "error", text: "צריך אדם, שם חוג, יום ושעת התחלה." });
       return;
     }
     const weekdays = [...form.weekdays].sort((a, b) => a - b);
@@ -80,11 +84,13 @@ export default function ClassesPage() {
       ? gate.supabase.from("hms_classes").update(payload).eq("id", editingId)
       : gate.supabase.from("hms_classes").insert({ ...payload, household_id: gate.member.household_id });
     const { error: writeError } = await write;
-    if (writeError) setError(writeError.message);
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו לשמור את החוג. נסה שוב." });
     else {
+      showNotice({ tone: "ok", text: editingId ? `${payload.name} עודכן.` : `${payload.name} נוסף.` });
       setEditingId(null);
       setFormOpen(false);
       setForm({ ...form, name: "", starts_at: "", ends_at: "", place: "" });
+      notifyRefresh();
       await load();
     }
   }
@@ -101,7 +107,6 @@ export default function ClassesPage() {
     });
     setEditingId(row.id);
     setFormOpen(true);
-    setError("");
   }
 
   function cancelEdit() {
@@ -112,26 +117,56 @@ export default function ClassesPage() {
   async function toggle(row: ClassRow) {
     if (!gate) return;
     const { error: writeError } = await gate.supabase.from("hms_classes").update({ active: !row.active }).eq("id", row.id);
-    if (writeError) setError(writeError.message);
-    else await load();
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו לעדכן את החוג. נסה שוב." });
+    else {
+      showNotice({
+        tone: "ok",
+        text: row.active ? `${row.name} הושהה.` : `${row.name} חזר לפעיל.`,
+        undo: () => toggle({ ...row, active: !row.active }),
+      });
+      notifyRefresh();
+      await load();
+    }
   }
 
   async function remove(id: string) {
     if (!gate) return;
-    if (!window.confirm("למחוק את החוג?")) return;
+    const name = rows?.find((row) => row.id === id)?.name ?? "החוג";
+    if (!window.confirm(`למחוק את "${name}"?`)) return;
     const { error: writeError } = await gate.supabase.from("hms_classes").delete().eq("id", id);
-    if (writeError) setError(writeError.message);
-    else await load();
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו למחוק את החוג. נסה שוב." });
+    else {
+      showNotice({ tone: "ok", text: `${name} נמחק.` });
+      notifyRefresh();
+      await load();
+    }
   }
+
+  const todayIndex = new Date().getDay();
+  const todayRows = (rows ?? []).filter((row) => classDays(row).includes(todayIndex) && row.active);
+  const laterDay = Array.from({ length: 6 }, (_, offset) => (todayIndex + offset + 1) % 7).find((index) =>
+    (rows ?? []).some((row) => row.active && classDays(row).includes(index)),
+  );
+  const lede = !rows
+    ? "מארגנים את החוגים…"
+    : rows.length === 0
+      ? "אין חוגים עדיין"
+      : todayRows.length > 0
+        ? todayRows.length === 1
+          ? `היום: ${todayRows[0].name}.`
+          : `${todayRows.length} חוגים היום`
+        : laterDay !== undefined
+          ? `הבא: ${WEEKDAYS[laterDay]}.`
+          : "אין חוגים פעילים השבוע";
 
   return (
     <>
       <PageHead
         title="חוגים"
+        lede={lede}
         action={<button className="btn btn-primary" type="button" onClick={() => { setEditingId(null); setFormOpen(true); }}>חוג חדש</button>}
       />
       <SectionTabs />
-      <Alert>{error}</Alert>
       {people.length === 0 ? <p className="note">כדי לשייך חוג צריך קודם <Link href="/settings">להוסיף אדם בניהול</Link>.</p> : null}
       <Sheet open={formOpen} title={editingId ? "עריכת חוג" : "חוג חדש"} onClose={() => { setFormOpen(false); setEditingId(null); }}>
       <form className="stack" onSubmit={addClass}>
@@ -174,48 +209,54 @@ export default function ClassesPage() {
       </Sheet>
       {!rows ? <Skeleton rows={4} /> : null}
       {rows && rows.length === 0 ? <Empty title="אין חוגים" action={<button className="btn btn-primary" type="button" onClick={() => setFormOpen(true)}>חוג חדש</button>} /> : null}
-      {WEEKDAYS.map((day, index) => {
-        const dayRows = (rows ?? []).filter((row) => classDays(row).includes(index));
-        if (!dayRows.length) return null;
-        return (
-          <CollapsibleSection storageKey={`classes-day-${index}`} title={<h2>{day}</h2>} key={day}>
-            <ul className="stack">
-              {dayRows.map((row) => (
-                <SwipeRow
-                  key={row.id}
-                  startActions={[{
-                    label: row.active ? "השהיה" : "הפעלה",
-                    icon: row.active ? <Pause aria-hidden="true" /> : <Play aria-hidden="true" />,
-                    onSelect: () => toggle(row),
-                    tone: row.active ? "warning" : "primary",
-                  }]}
-                  endActions={[
-                    { label: "עריכה", icon: <Pencil aria-hidden="true" />, onSelect: () => startEdit(row) },
-                    { label: "מחיקה", icon: <Trash2 aria-hidden="true" />, onSelect: () => remove(row.id), tone: "danger" },
-                  ]}
-                >
-                  <span className="row-mark" aria-hidden="true"><CalendarDays /></span>
-                  <div className="row-open">
-                    <span>{row.name}</span>
-                    <span className="meta">
-                      {row.starts_at.slice(0, 5)}
-                      {row.ends_at ? `–${row.ends_at.slice(0, 5)}` : ""}
-                      {row.place ? ` · ${row.place}` : ""}
-                      {row.active ? "" : " · מושהה"}{" "}
-                      <PersonLink id={row.person_id} name={people.find((p) => p.id === row.person_id)?.name ?? ""} />
-                    </span>
-                  </div>
-                  <RowMenu>
-                    <MenuItem icon={<Pencil aria-hidden="true" />} onSelect={() => startEdit(row)}>עריכה</MenuItem>
-                    <MenuItem icon={row.active ? <Pause aria-hidden="true" /> : <Play aria-hidden="true" />} onSelect={() => toggle(row)}>{row.active ? "השהיה" : "הפעלה"}</MenuItem>
-                    <MenuItem danger icon={<Trash2 aria-hidden="true" />} onSelect={() => remove(row.id)}>מחיקה</MenuItem>
-                  </RowMenu>
-                </SwipeRow>
-              ))}
-            </ul>
-          </CollapsibleSection>
-        );
-      })}
+      {rows && rows.length > 0 ? (
+        <div className="week-board">
+          {WEEKDAYS.map((day, index) => {
+            const dayRows = rows.filter((row) => classDays(row).includes(index)).sort(byStart);
+            const empty = dayRows.length === 0;
+            return (
+              <section
+                className="week-day"
+                key={day}
+                data-today={index === todayIndex ? "true" : undefined}
+                data-empty={empty ? "true" : undefined}
+              >
+                <header className="week-day-head">
+                  <h2>{day}</h2>
+                  <span className="meta">{index === todayIndex ? (empty ? "היום · פנוי" : "היום") : empty ? "פנוי" : null}</span>
+                </header>
+                {empty ? null : (
+                  <ul className="week-events">
+                    {dayRows.map((row) => (
+                      <li className="week-event-row" key={row.id}>
+                        <button className="week-event" type="button" data-paused={row.active ? undefined : "true"} onClick={() => startEdit(row)}>
+                          <span className="week-event-time">
+                            {row.starts_at.slice(0, 5)}
+                            {row.ends_at ? <><br />{row.ends_at.slice(0, 5)}</> : null}
+                          </span>
+                          <span className="week-event-body">
+                            <strong>{row.name}</strong>
+                            <span className="meta">
+                              {row.place ?? ""}
+                              {row.active ? "" : `${row.place ? " · " : ""}מושהה`}
+                            </span>
+                          </span>
+                        </button>
+                        <PersonLink id={row.person_id} name={people.find((p) => p.id === row.person_id)?.name ?? ""} people={people} />
+                        <RowMenu>
+                          <MenuItem icon={<Pencil aria-hidden="true" />} onSelect={() => startEdit(row)}>עריכה</MenuItem>
+                          <MenuItem icon={row.active ? <Pause aria-hidden="true" /> : <Play aria-hidden="true" />} onSelect={() => toggle(row)}>{row.active ? "השהיה" : "הפעלה"}</MenuItem>
+                          <MenuItem danger icon={<Trash2 aria-hidden="true" />} onSelect={() => remove(row.id)}>מחיקה</MenuItem>
+                        </RowMenu>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            );
+          })}
+        </div>
+      ) : null}
     </>
   );
 }

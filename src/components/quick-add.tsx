@@ -261,7 +261,7 @@ export function QuickAdd() {
         <div className="modal-back" role="presentation" onClick={close}>
           <form className="modal" role="dialog" aria-modal="true" aria-label={label} onClick={(e) => e.stopPropagation()} onSubmit={save}>
             <header className="modal-head">
-              <p className="eyebrow">{label}</p>
+              <h2>{label}</h2>
               <IconButton label="סגירה" onClick={close}>
                 <X size={18} aria-hidden="true" />
               </IconButton>

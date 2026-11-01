@@ -170,7 +170,7 @@ export function TaskEditorProvider({ children }: { children: ReactNode }) {
             onSubmit={save}
           >
             <header className="modal-head">
-              <p className="eyebrow">משימה</p>
+              <h2>משימה</h2>
               <IconButton label="סגירה" onClick={() => setTask(null)}>
                 <X size={18} aria-hidden="true" />
               </IconButton>

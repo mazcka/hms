@@ -86,10 +86,21 @@ export function ItemLabel({ value }: { value: string }) {
   );
 }
 
-export function PersonLink({ id, name }: { id: string; name: string }) {
+const PERSON_TONES = 6;
+
+function personTone(id: string, people: { id: string }[] = []) {
+  const ids = people.map((person) => person.id).sort();
+  const index = ids.indexOf(id);
+  if (index >= 0) return index % PERSON_TONES;
+  let hash = 0;
+  for (let i = 0; i < id.length; i += 1) hash = (hash * 33 + id.charCodeAt(i)) >>> 0;
+  return hash % PERSON_TONES;
+}
+
+export function PersonLink({ id, name, people }: { id: string; name: string; people?: { id: string }[] }) {
   if (!name) return null;
   return (
-    <Link className="chip chip-person" href={`/people/${id}`}>
+    <Link className="chip chip-person" data-tone={personTone(id, people)} href={`/people/${id}`}>
       {name}
     </Link>
   );
