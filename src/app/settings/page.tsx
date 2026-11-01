@@ -3,12 +3,13 @@
 import { Check, Lock, Pencil, Plus, Tag, Trash2, UserRound } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { useActionNotice } from "@/components/action-notice";
 import { useHousehold } from "@/components/auth-provider";
 import { CollapsibleSection } from "@/components/collapsible-section";
 import { MenuItem, RowMenu } from "@/components/menu";
 import { Sheet } from "@/components/sheet";
 import { SwipeRow } from "@/components/swipe-row";
-import { Alert, Empty, PageHead, Skeleton } from "@/components/ui";
+import { Empty, PageHead, PersonLink, Skeleton } from "@/components/ui";
 import { EVENT_KINDS, RELATIONS } from "@/lib/labels";
 
 type Person = { id: string; name: string; relation: keyof typeof RELATIONS };
@@ -16,6 +17,7 @@ type Kind = { id: string; label: string };
 
 export default function SettingsPage() {
   const gate = useHousehold();
+  const { showNotice } = useActionNotice();
   const router = useRouter();
   const [homeName, setHomeName] = useState("");
   const [people, setPeople] = useState<Person[] | null>(null);
@@ -25,7 +27,6 @@ export default function SettingsPage() {
   const [editing, setEditing] = useState<Person | null>(null);
   const [kindLabel, setKindLabel] = useState("");
   const [names, setNames] = useState<Record<string, string>>({});
-  const [error, setError] = useState("");
 
   async function load() {
     if (!gate) return;
@@ -34,7 +35,7 @@ export default function SettingsPage() {
       gate.supabase.from("hms_people").select("id, name, relation").eq("household_id", gate.member.household_id).order("name"),
       gate.supabase.from("hms_event_kinds").select("id, label").eq("household_id", gate.member.household_id).order("label"),
     ]);
-    setError(home.error?.message || peopleResult.error?.message || kindsResult.error?.message || "");
+    if (home.error || peopleResult.error || kindsResult.error) showNotice({ tone: "error", text: "לא הצלחנו לטעון את ההגדרות, נסה שוב." });
     setHomeName((home.data?.name as string | undefined) ?? "");
     setPeople((peopleResult.data ?? []) as Person[]);
     setKinds(kindsResult.error ? [] : (kindsResult.data ?? []) as Kind[]);
@@ -52,13 +53,14 @@ export default function SettingsPage() {
     event.preventDefault();
     if (!gate || !homeName.trim()) return;
     const { error: writeError } = await gate.supabase.from("hms_households").update({ name: homeName.trim() }).eq("id", gate.member.household_id);
-    setError(writeError?.message ?? "");
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו לשמור את שם הבית, נסה שוב." });
+    else showNotice({ tone: "ok", text: "שם הבית עודכן." });
   }
 
   async function addPerson(event: FormEvent) {
     event.preventDefault();
     if (!gate || !personName.trim()) {
-      setError("חסר שם.");
+      showNotice({ tone: "error", text: "חסר שם." });
       return;
     }
     const { error: writeError } = await gate.supabase.from("hms_people").insert({
@@ -66,10 +68,10 @@ export default function SettingsPage() {
       name: personName.trim(),
       relation,
     });
-    if (writeError) setError(writeError.message);
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו להוסיף את האדם, נסה שוב." });
     else {
+      showNotice({ tone: "ok", text: `${personName.trim()} נוסף.` });
       setPersonName("");
-      setError("");
       await load();
     }
   }
@@ -81,18 +83,22 @@ export default function SettingsPage() {
       name: editing.name.trim(),
       relation: editing.relation,
     }).eq("id", editing.id);
-    if (writeError) setError(writeError.message);
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו לשמור, נסה שוב." });
     else {
+      showNotice({ tone: "ok", text: `${editing.name.trim()} עודכן.` });
       setEditing(null);
       await load();
     }
   }
 
   async function removePerson(id: string) {
-    if (!gate || !window.confirm("למחוק את האדם? החוגים שלו יימחקו איתו.")) return;
+    if (!gate || !window.confirm("למחוק את האדם? החוגים שלו יימחקו איתו")) return;
     const { error: writeError } = await gate.supabase.from("hms_people").delete().eq("id", id);
-    if (writeError) setError(writeError.message);
-    else await load();
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו למחוק, נסה שוב." });
+    else {
+      showNotice({ tone: "ok", text: "האדם נמחק." });
+      await load();
+    }
   }
 
   async function addKind(event: FormEvent) {
@@ -102,20 +108,23 @@ export default function SettingsPage() {
       household_id: gate.member.household_id,
       label: kindLabel.trim(),
     });
-    if (writeError) setError(writeError.message);
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו להוסיף סוג, נסה שוב." });
     else {
+      showNotice({ tone: "ok", text: `${kindLabel.trim()} נוסף.` });
       setKindLabel("");
-      setError("");
       await load();
     }
   }
 
   async function removeKind(kind: Kind) {
-    if (!gate || !window.confirm(`למחוק את הסוג "${kind.label}"? אירועים מהסוג הזה יעברו ל"אחר".`)) return;
+    if (!gate || !window.confirm(`למחוק את הסוג "${kind.label}"? אירועים מהסוג הזה יעברו ל"אחר"`)) return;
     await gate.supabase.from("hms_events").update({ kind: "other" }).eq("household_id", gate.member.household_id).eq("kind", kind.id);
     const { error: writeError } = await gate.supabase.from("hms_event_kinds").delete().eq("id", kind.id);
-    if (writeError) setError(writeError.message);
-    else await load();
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו למחוק את הסוג, נסה שוב." });
+    else {
+      showNotice({ tone: "ok", text: `${kind.label} נמחק.` });
+      await load();
+    }
   }
 
   async function saveMember(id: string) {
@@ -123,8 +132,11 @@ export default function SettingsPage() {
     const display_name = names[id]?.trim();
     if (!display_name) return;
     const { error: writeError } = await gate.supabase.from("hms_members").update({ display_name }).eq("id", id);
-    if (writeError) setError(writeError.message);
-    else await gate.reload();
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו לשמור את השם, נסה שוב." });
+    else {
+      showNotice({ tone: "ok", text: "השם עודכן." });
+      await gate.reload();
+    }
   }
 
   async function signOut() {
@@ -135,17 +147,16 @@ export default function SettingsPage() {
 
   return (
     <>
-      <PageHead title="ניהול" lede="הגדרות הבית" />
-      <Alert>{error}</Alert>
+      <PageHead title="ניהול" lede="הבית, האנשים ומי שנכנס לאפליקציה" />
 
-      <CollapsibleSection storageKey="settings-home" title={<h2>הבית</h2>}>
+      <CollapsibleSection storageKey="settings-home" title={<h2>הבית</h2>} className="panel">
         <form className="record" onSubmit={saveHome}>
           <input value={homeName} onChange={(e) => setHomeName(e.target.value)} aria-label="שם הבית" />
           <button className="icon-btn" type="submit" aria-label="שמירה" title="שמירה"><Check aria-hidden="true" /></button>
         </form>
       </CollapsibleSection>
 
-      <CollapsibleSection storageKey="settings-people" title={<h2>אנשים</h2>}>
+      <CollapsibleSection storageKey="settings-people" title={<h2>אנשים</h2>} className="panel">
         {!people ? <Skeleton rows={2} /> : null}
         {people && people.length === 0 ? <Empty title="אין אנשים" /> : null}
         <ul className="stack">
@@ -157,11 +168,10 @@ export default function SettingsPage() {
                 { label: "מחיקה", icon: <Trash2 aria-hidden="true" />, onSelect: () => removePerson(person.id), tone: "danger" },
               ]}
             >
-              <span className="row-mark" aria-hidden="true"><UserRound /></span>
-              <div className="row-open">
-                <span>{person.name}</span>
+              <button className="row-open" type="button" aria-label={`עריכת ${person.name}`} onClick={() => setEditing(person)}>
                 <span className="meta">{RELATIONS[person.relation]}</span>
-              </div>
+              </button>
+              <PersonLink id={person.id} name={person.name} people={people ?? []} />
               <RowMenu label={`פעולות ${person.name}`}>
                 <MenuItem icon={<Pencil aria-hidden="true" />} onSelect={() => setEditing(person)}>עריכה</MenuItem>
                 <MenuItem danger icon={<Trash2 aria-hidden="true" />} onSelect={() => removePerson(person.id)}>מחיקה</MenuItem>
@@ -180,7 +190,7 @@ export default function SettingsPage() {
         </form>
       </CollapsibleSection>
 
-      <CollapsibleSection storageKey="settings-kinds" title={<h2>סוגי אירועים</h2>}>
+      <CollapsibleSection storageKey="settings-kinds" title={<h2>סוגי אירועים</h2>} className="panel">
         <ul className="stack">
           {Object.values(EVENT_KINDS).map((label) => (
             <li className="record record-static" key={label}>
@@ -211,7 +221,7 @@ export default function SettingsPage() {
         {kinds === null ? null : <p className="note">יום הולדת, תור ואחר תמיד זמינים. סוגים שמוסיפים כאן מופיעים בטופס אירוע.</p>}
       </CollapsibleSection>
 
-      <CollapsibleSection storageKey="settings-members" title={<h2>מי שמשתמש באפליקציה</h2>}>
+      <CollapsibleSection storageKey="settings-members" title={<h2>מי שמשתמש באפליקציה</h2>} className="panel">
         <ul className="stack">
           {gate.members.map((member) => (
             <li key={member.id}>

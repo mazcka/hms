@@ -1,5 +1,6 @@
 "use client";
 
+import { CalendarDays, CheckSquare, House, Settings, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -11,6 +12,7 @@ import {
   type ReactNode,
 } from "react";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
+import { ActionNoticeProvider } from "@/components/action-notice";
 import { PushSync } from "@/components/push-sync";
 import { QuickAdd } from "@/components/quick-add";
 import { TaskEditorProvider } from "@/components/task-editor";
@@ -39,61 +41,18 @@ export function useHousehold() {
 }
 
 const NAV = [
-  { href: "/", label: "היום", icon: "home" },
-  { href: "/tasks", label: "משימות", icon: "check" },
-  { href: "/classes", label: "יומן", icon: "calendar" },
-  { href: "/shop", label: "קניות", icon: "bag" },
-  { href: "/settings", label: "ניהול", icon: "settings" },
+  { href: "/", label: "היום", icon: House },
+  { href: "/tasks", label: "משימות", icon: CheckSquare },
+  { href: "/classes", label: "יומן", icon: CalendarDays },
+  { href: "/shop", label: "קניות", icon: ShoppingBag },
+  { href: "/settings", label: "ניהול", icon: Settings },
 ] as const;
 
 function navIsCurrent(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
   if (href === "/classes") return pathname === "/classes" || pathname === "/events";
+  if (href === "/settings") return pathname === "/settings" || pathname.startsWith("/people/");
   return pathname === href || pathname.startsWith(`${href}/`);
-}
-
-function NavIcon({ name }: { name: (typeof NAV)[number]["icon"] }) {
-  const common = { fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
-  if (name === "home") {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path {...common} d="M4.5 11.2 12 5l7.5 6.2" />
-        <path {...common} d="M7 10.6V19h10v-8.4" />
-        <path {...common} d="M10.4 19v-4.2h3.2V19" />
-        <path {...common} d="M12 5.2c.2-1.1 1.5-1.5 2.1-.4" />
-      </svg>
-    );
-  }
-  if (name === "check") {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <rect {...common} x="4" y="4" width="16" height="16" rx="3" />
-        <path {...common} d="m8 12 2.5 2.5L16 9" />
-      </svg>
-    );
-  }
-  if (name === "calendar") {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <rect {...common} x="4" y="5" width="16" height="15" rx="2" />
-        <path {...common} d="M8 3.5v3M16 3.5v3M4 10h16" />
-      </svg>
-    );
-  }
-  if (name === "settings") {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <circle {...common} cx="12" cy="12" r="3" />
-        <path {...common} d="M12 3.5v2.2M12 18.3v2.2M3.5 12h2.2M18.3 12h2.2M6.1 6.1l1.6 1.6M16.3 16.3l1.6 1.6M17.9 6.1l-1.6 1.6M7.7 16.3l-1.6 1.6" />
-      </svg>
-    );
-  }
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path {...common} d="M6 8h12l-1 12H7L6 8z" />
-      <path {...common} d="M9 8V7a3 3 0 0 1 6 0v1" />
-    </svg>
-  );
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -112,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .eq("user_id", userId)
       .maybeSingle();
     if (memberError) {
-      setError(memberError.message);
+      setError("לא הצלחנו לטעון את החברות בבית. נסה לרענן.");
       setMember(null);
       return;
     }
@@ -126,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .from("hms_members")
       .select("id, household_id, user_id, display_name")
       .eq("household_id", row.household_id);
-    if (allError) setError(allError.message);
+    if (allError) setError("לא הצלחנו לטעון את בני הבית. נסה לרענן.");
     setMembers((all ?? []) as Member[]);
   }
 
@@ -167,6 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <GateContext.Provider value={gate}>
+      <ActionNoticeProvider>
       <div className="app-main">
         {!supabase ? <SetupMissing /> : null}
         {supabase && !ready ? <Loader /> : null}
@@ -185,18 +145,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {showNav ? <QuickAdd /> : null}
       {showNav ? (
         <nav className="nav" aria-label="ראשי">
-          {NAV.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={navIsCurrent(pathname, item.href) ? "page" : undefined}
-            >
-              <NavIcon name={item.icon} />
-              <span>{item.label}</span>
-            </Link>
-          ))}
+          {NAV.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={navIsCurrent(pathname, item.href) ? "page" : undefined}
+              >
+                <Icon aria-hidden="true" strokeWidth={1.8} />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
         </nav>
       ) : null}
+      </ActionNoticeProvider>
     </GateContext.Provider>
   );
 }
@@ -227,7 +191,7 @@ function SignedOut() {
   return (
     <section className="card stack">
       <BrandHeading />
-      <p>כדי לראות את היום צריך להתחבר.</p>
+      <p>כדי לראות את היום צריך להתחבר</p>
       <Link className="btn btn-primary" href="/login">
         כניסה
       </Link>
@@ -241,7 +205,7 @@ function NeedsHousehold({ userId, error }: { userId: string; error: string }) {
       <BrandHeading title="החשבון עדיין לא משויך לבית" />
       <p>
         אחרי שיש שני משתמשי Auth, יוצרים משק בית ושתי שורות ב-<code>hms_members</code> ב-SQL Editor.
-        המדיניות חוסמת יצירה מהאפליקציה לפני שיש חברות.
+        המדיניות חוסמת יצירה מהאפליקציה לפני שיש חברות
       </p>
       <p>
         מזהה המשתמש: <code>{userId}</code>

@@ -2,6 +2,7 @@
 
 import { Calendar, Pencil, Trash2 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
+import { useActionNotice } from "@/components/action-notice";
 import { useHousehold } from "@/components/auth-provider";
 import { CollapsibleSection } from "@/components/collapsible-section";
 import { PlaceField } from "@/components/place-field";
@@ -9,9 +10,10 @@ import { MenuItem, RowMenu } from "@/components/menu";
 import { SectionTabs } from "@/components/section-tabs";
 import { Sheet } from "@/components/sheet";
 import { SwipeRow } from "@/components/swipe-row";
-import { Alert, Empty, PageHead, PersonLink, Skeleton } from "@/components/ui";
-import { eventKindLabel, eventKindOptions, formatDate } from "@/lib/labels";
+import { Empty, PageHead, PersonLink, Skeleton } from "@/components/ui";
+import { eventKindLabel, eventKindOptions, formatDate, todayIso } from "@/lib/labels";
 import { savePushSubscription } from "@/lib/push-client";
+import { notifyRefresh } from "@/lib/task";
 
 type Person = { id: string; name: string };
 type Kind = { id: string; label: string };
@@ -29,16 +31,76 @@ type EventRow = {
 
 const blank = { title: "", kind: "birthday", event_date: "", event_time: "", person_id: "", place: "", notes: "", remind_day_before: true };
 
+function EventGroup({
+  storageKey,
+  title,
+  events,
+  kinds,
+  people,
+  onEdit,
+  onRemove,
+  empty,
+  defaultOpen = true,
+}: {
+  storageKey: string;
+  title: string;
+  events: EventRow[];
+  kinds: Kind[];
+  people: Person[];
+  onEdit: (row: EventRow) => void;
+  onRemove: (id: string) => void;
+  empty?: string;
+  defaultOpen?: boolean;
+}) {
+  if (events.length === 0 && !empty) return null;
+  return (
+    <CollapsibleSection
+      storageKey={storageKey}
+      title={<h2>{title}</h2>}
+      action={<span className="meta">{events.length || "פנוי"}</span>}
+      defaultOpen={defaultOpen}
+      className="panel"
+    >
+      {events.length === 0 ? <p className="agenda-empty">{empty}</p> : (
+      <ul className="stack">
+        {events.map((row) => (
+          <SwipeRow
+            key={row.id}
+            endActions={[
+              { label: "עריכה", icon: <Pencil aria-hidden="true" />, onSelect: () => onEdit(row) },
+              { label: "מחיקה", icon: <Trash2 aria-hidden="true" />, onSelect: () => onRemove(row.id), tone: "danger" },
+            ]}
+          >
+            <span className="row-mark" aria-hidden="true"><Calendar /></span>
+            <button className="row-open" type="button" onClick={() => onEdit(row)}>
+              <span>{row.title}</span>
+              <span className="meta">
+                {eventKindLabel(row.kind, kinds)} · {formatDate(row.event_date)}
+                {row.event_time ? ` · ${row.event_time.slice(0, 5)}` : ""}
+              </span>
+            </button>
+            {row.person_id ? <PersonLink id={row.person_id} name={people.find((p) => p.id === row.person_id)?.name ?? ""} people={people} /> : null}
+            <RowMenu>
+              <MenuItem icon={<Pencil aria-hidden="true" />} onSelect={() => onEdit(row)}>עריכה</MenuItem>
+              <MenuItem danger icon={<Trash2 aria-hidden="true" />} onSelect={() => onRemove(row.id)}>מחיקה</MenuItem>
+            </RowMenu>
+          </SwipeRow>
+        ))}
+      </ul>
+      )}
+    </CollapsibleSection>
+  );
+}
+
 export default function EventsPage() {
   const gate = useHousehold();
+  const { showNotice } = useActionNotice();
   const [people, setPeople] = useState<Person[]>([]);
   const [kinds, setKinds] = useState<Kind[]>([]);
   const [rows, setRows] = useState<EventRow[] | null>(null);
   const [form, setForm] = useState(blank);
   const [composer, setComposer] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
 
   async function load() {
     if (!gate) return;
@@ -47,7 +109,7 @@ export default function EventsPage() {
       gate.supabase.from("hms_events").select("id, title, kind, event_date, event_time, person_id, place, notes, remind_day_before").eq("household_id", gate.member.household_id).order("event_date"),
       gate.supabase.from("hms_event_kinds").select("id, label").eq("household_id", gate.member.household_id).order("label"),
     ]);
-    if (p.error || e.error) setError(p.error?.message || e.error?.message || "");
+    if (p.error || e.error) showNotice({ tone: "error", text: "לא הצלחנו לטעון את האירועים, נסה שוב." });
     setPeople((p.data ?? []) as Person[]);
     setRows((e.data ?? []) as EventRow[]);
     setKinds(k.error ? [] : (k.data ?? []) as Kind[]);
@@ -69,10 +131,9 @@ export default function EventsPage() {
     event.preventDefault();
     if (!gate) return;
     if (!form.title.trim() || !form.event_date) {
-      setError("לאירוע, ובמיוחד ליום הולדת, חובה כותרת ותאריך.");
+      showNotice({ tone: "error", text: "חסרים כותרת ותאריך." });
       return;
     }
-    setError("");
     const payload = {
       household_id: gate.member.household_id,
       title: form.title.trim(),
@@ -89,13 +150,16 @@ export default function EventsPage() {
       ? gate.supabase.from("hms_events").update(payload).eq("id", editingId)
       : gate.supabase.from("hms_events").insert(payload);
     const { error: writeError } = await write;
-    if (writeError) setError(writeError.message);
-    else {
-      setForm(blank);
-      setEditingId(null);
-      setComposer(false);
-      await load();
+    if (writeError) {
+      showNotice({ tone: "error", text: "לא הצלחנו לשמור את האירוע, נסה שוב." });
+      return;
     }
+    showNotice({ tone: "ok", text: editingId ? `${payload.title} עודכן` : `${payload.title} נוסף` });
+    setForm(blank);
+    setEditingId(null);
+    setComposer(false);
+    notifyRefresh();
+    await load();
   }
 
   function startEdit(row: EventRow) {
@@ -111,33 +175,48 @@ export default function EventsPage() {
     });
     setEditingId(row.id);
     setComposer(true);
-    setError("");
   }
 
   async function remove(id: string) {
     if (!gate) return;
-    if (!window.confirm("למחוק את האירוע?")) return;
+    const title = rows?.find((row) => row.id === id)?.title ?? "האירוע";
+    if (!window.confirm(`למחוק את "${title}"?`)) return;
     const { error: writeError } = await gate.supabase.from("hms_events").delete().eq("id", id);
-    if (writeError) setError(writeError.message);
-    else await load();
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו למחוק את האירוע, נסה שוב." });
+    else {
+      showNotice({ tone: "ok", text: `${title} נמחק.` });
+      notifyRefresh();
+      await load();
+    }
   }
 
   async function enableReminders() {
     if (!gate) return;
     const result = await savePushSubscription(gate.session.access_token);
-    if (result === "granted") setNotice("התראות פעילות. תזכורת לאירוע תגיע בבוקר של היום שלפניו, גם כשהאפליקציה סגורה.");
-    else if (result === "browser") setNotice("באייפון צריך לפתוח את מצקה מהאייקון במסך הבית.");
-    else if (result === "unsupported") setNotice("הדפדפן לא תומך בהתראות.");
-    else if (result === "save") setNotice("ההרשאה ניתנה, אבל שמירת המכשיר נכשלה.");
-    else setNotice("ההרשאה לא ניתנה.");
+    if (result === "granted") showNotice({ tone: "ok", text: "התראות פעילות. תזכורת לאירוע תגיע בבוקר של היום שלפניו, גם כשהאפליקציה סגורה." });
+    else if (result === "browser") showNotice({ tone: "error", text: "באייפון צריך לפתוח את מצקה מהאייקון במסך הבית." });
+    else if (result === "unsupported") showNotice({ tone: "error", text: "הדפדפן לא תומך בהתראות." });
+    else if (result === "save") showNotice({ tone: "error", text: "ההרשאה ניתנה, אבל שמירת המכשיר נכשלה." });
+    else showNotice({ tone: "error", text: "ההרשאה לא ניתנה." });
   }
+
+  const today = todayIso();
+  const todayRows = (rows ?? []).filter((row) => row.event_date === today);
+  const laterRows = (rows ?? []).filter((row) => row.event_date > today);
+  const pastRows = (rows ?? []).filter((row) => row.event_date < today);
+  const upcoming = todayRows.length + laterRows.length;
+  const lede = !rows
+    ? "מארגנים את היומן…"
+    : upcoming === 0
+      ? "אין אירועים בהמשך"
+      : upcoming === 1
+        ? "אירוע אחד בהמשך"
+        : `${upcoming} אירועים בהמשך`;
 
   return (
     <>
-      <PageHead title="אירועים" action={<button className="btn btn-primary" type="button" onClick={() => setComposer(true)}>אירוע חדש</button>} />
+      <PageHead title="אירועים" lede={lede} action={<button className="btn btn-primary" type="button" onClick={() => setComposer(true)}>אירוע חדש</button>} />
       <SectionTabs />
-      <Alert>{error}</Alert>
-      {notice ? <p className="note">{notice}</p> : null}
       <Sheet open={composer} title={editingId ? "עריכת אירוע" : "אירוע חדש"} onClose={() => { setComposer(false); setEditingId(null); setForm(blank); }}>
       <form className="stack" onSubmit={save}>
         <label>
@@ -193,33 +272,11 @@ export default function EventsPage() {
       {!rows ? <Skeleton rows={3} /> : null}
       {rows && rows.length === 0 ? <Empty title="אין אירועים" action={<button className="btn btn-primary" type="button" onClick={() => setComposer(true)}>אירוע חדש</button>} /> : null}
       {rows && rows.length > 0 ? (
-        <CollapsibleSection storageKey="events-list" title={<h2>כל האירועים</h2>}>
-          <ul className="stack">
-            {rows.map((row) => (
-              <SwipeRow
-                key={row.id}
-                endActions={[
-                  { label: "עריכה", icon: <Pencil aria-hidden="true" />, onSelect: () => startEdit(row) },
-                  { label: "מחיקה", icon: <Trash2 aria-hidden="true" />, onSelect: () => remove(row.id), tone: "danger" },
-                ]}
-              >
-                <span className="row-mark" aria-hidden="true"><Calendar /></span>
-                <div className="row-open">
-                  <span>{row.title}</span>
-                  <span className="meta">
-                    {eventKindLabel(row.kind, kinds)} · {formatDate(row.event_date)}
-                    {row.event_time ? ` · ${row.event_time.slice(0, 5)}` : ""}
-                    {row.person_id ? <PersonLink id={row.person_id} name={people.find((p) => p.id === row.person_id)?.name ?? ""} /> : null}
-                  </span>
-                </div>
-                <RowMenu>
-                  <MenuItem icon={<Pencil aria-hidden="true" />} onSelect={() => startEdit(row)}>עריכה</MenuItem>
-                  <MenuItem danger icon={<Trash2 aria-hidden="true" />} onSelect={() => remove(row.id)}>מחיקה</MenuItem>
-                </RowMenu>
-              </SwipeRow>
-            ))}
-          </ul>
-        </CollapsibleSection>
+        <div className="tasks-board">
+          <EventGroup storageKey="events-today" title="היום" events={todayRows} kinds={kinds} people={people} onEdit={startEdit} onRemove={remove} empty="אין אירועים היום." />
+          <EventGroup storageKey="events-later" title="בהמשך" events={laterRows} kinds={kinds} people={people} onEdit={startEdit} onRemove={remove} />
+          <EventGroup storageKey="events-past" title="עברו" events={pastRows} kinds={kinds} people={people} onEdit={startEdit} onRemove={remove} defaultOpen={false} />
+        </div>
       ) : null}
     </>
   );

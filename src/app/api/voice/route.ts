@@ -3,7 +3,7 @@ import { draftFromModel, emptyDraft } from "@/lib/voice-draft";
 export const runtime = "nodejs";
 
 const MISSING =
-  "מפתח הבינה המלאכותית לא הוגדר. אפשר להשלים את כרטיס הטיוטה ידנית.";
+  "מפתח הבינה המלאכותית לא הוגדר, אפשר להשלים את כרטיס הטיוטה ידנית";
 
 export async function POST(request: Request) {
   const key = process.env.OPENAI_API_KEY?.trim();
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   const form = await request.formData();
   const audio = form.get("audio");
   if (!(audio instanceof File) || audio.size === 0) {
-    return Response.json(emptyDraft({ aiConfigured: true, aiMessage: "לא התקבלה הקלטה." }), { status: 400 });
+    return Response.json(emptyDraft({ aiConfigured: true, aiMessage: "לא התקבלה הקלטה" }), { status: 400 });
   }
 
   const whisperBody = new FormData();

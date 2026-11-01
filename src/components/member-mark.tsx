@@ -1,4 +1,4 @@
-const COLORS = ["#1d4e89", "#0f6e56", "#8a3d12", "#6d28d9", "#9f2d2d"];
+const COLORS = ["#1f6b4a", "#3d6b8c", "#8a3d12", "#4a2d8a", "#a33b32"];
 
 export function MemberMark({ name }: { name: string }) {
   const letter = name.trim().charAt(0) || "?";

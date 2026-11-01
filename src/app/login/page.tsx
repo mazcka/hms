@@ -3,7 +3,14 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { getSupabase } from "@/lib/supabase";
-import { Alert, BrandMark } from "@/components/ui";
+import { BrandMark } from "@/components/ui";
+
+function authMessage(message: string) {
+  if (/invalid login|invalid credentials|invalid_credentials/i.test(message)) return "האימייל או הסיסמה לא נכונים.";
+  if (/already registered|already been registered/i.test(message)) return "האימייל כבר רשום. אפשר להתחבר.";
+  if (/rate/i.test(message)) return "יותר מדי ניסיונות. חכה רגע ונסה שוב.";
+  return "לא הצלחנו להשלים את הפעולה. נסה שוב.";
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -35,8 +42,8 @@ export default function LoginPage() {
         options: { data: { display_name: name.trim() } },
       });
       setPending(false);
-      if (signError) setError(signError.message);
-      else setInfo("החשבון נוצר. אם נדרש אימות במייל, אשרו אותו ואז התחברו. שיוך לבית נעשה ב-SQL.");
+      if (signError) setError(authMessage(signError.message));
+      else setInfo("החשבון נוצר. אם צריך לאשר במייל — אשרו ואז התחברו. השיוך לבית נעשה אחר כך.");
       return;
     }
     const { error: signError } = await supabase.auth.signInWithPassword({
@@ -44,20 +51,19 @@ export default function LoginPage() {
       password,
     });
     setPending(false);
-    if (signError) setError(signError.message);
+    if (signError) setError(authMessage(signError.message));
     else router.replace("/");
   }
 
   return (
-    <section className="card">
-      <p className="brand-lockup eyebrow">
-        <BrandMark size={40} />
-        מצקה
-      </p>
-      <h1>{mode === "in" ? "כניסה" : "חשבון חדש"}</h1>
-      <p className="lede">כניסה רק לשני בני הזוג, עם אימייל וסיסמה.</p>
+    <section className="card auth-card">
+      <div className="brand-lockup">
+        <BrandMark size={44} />
+        <h1>מצקה</h1>
+      </div>
+      <p className="lede">{mode === "in" ? "כניסה לבית, לשני בני הזוג." : "חשבון חדש לבית."}</p>
       <form className="stack" onSubmit={onSubmit}>
-        <Alert>{error}</Alert>
+        {error ? <p className="alert" role="alert">{error}</p> : null}
         {info ? <p className="note">{info}</p> : null}
         {mode === "up" ? (
           <label>
@@ -87,14 +93,14 @@ export default function LoginPage() {
             aria-describedby="password-hint"
           />
         </label>
-        <p id="password-hint" className="meta">לפחות 6 תווים.</p>
+        <p id="password-hint" className="meta">לפחות 6 תווים</p>
         <button className="btn btn-primary" type="submit" disabled={pending}>
           {pending ? "שולח…" : mode === "in" ? "כניסה" : "יצירת חשבון"}
         </button>
         <button
           className="btn btn-quiet"
           type="button"
-          onClick={() => setMode(mode === "in" ? "up" : "in")}
+          onClick={() => { setMode(mode === "in" ? "up" : "in"); setError(""); setInfo(""); }}
         >
           {mode === "in" ? "אין חשבון? יצירה" : "יש חשבון? כניסה"}
         </button>

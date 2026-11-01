@@ -1,16 +1,17 @@
 "use client";
 
-import { Calendar, CalendarDays, Check, Pencil, ShoppingBag, Trash2 } from "lucide-react";
+import { Calendar, CalendarDays, Check, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
+import { useActionNotice } from "@/components/action-notice";
 import { useHousehold } from "@/components/auth-provider";
 import { CollapsibleSection } from "@/components/collapsible-section";
-import { MasonryGrid } from "@/components/masonry-grid";
+import { IconButton, MenuItem, RowMenu } from "@/components/menu";
 import { PlaceNav } from "@/components/place-nav";
 import { Sheet } from "@/components/sheet";
 import { TaskLine } from "@/components/task-line";
 import { SwipeRow } from "@/components/swipe-row";
-import { Alert, Empty, ItemLabel, PageHead, PersonLink, Skeleton } from "@/components/ui";
+import { Empty, ItemLabel, PageHead, PersonLink, Skeleton } from "@/components/ui";
 import { classDays } from "@/components/weekday-picker";
 import { WEEKDAYS, eventKindLabel, formatDate, todayIso } from "@/lib/labels";
 import { HMS_REFRESH, TASK_FIELDS, arrangeTasks, notifyRefresh, type Task } from "@/lib/task";
@@ -44,13 +45,13 @@ type Peek = { kind: "class"; row: ClassRow } | { kind: "event"; row: EventRow };
 
 export default function WeekPage() {
   const gate = useHousehold();
-  const [error, setError] = useState("");
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [lists, setLists] = useState<List[] | null>(null);
   const [classes, setClasses] = useState<ClassRow[] | null>(null);
   const [people, setPeople] = useState<Person[]>([]);
   const [events, setEvents] = useState<EventRow[] | null>(null);
   const [kinds, setKinds] = useState<Kind[]>([]);
+  const { showNotice } = useActionNotice();
   const [editing, setEditing] = useState<ShopEdit | null>(null);
   const [peek, setPeek] = useState<Peek | null>(null);
 
@@ -70,7 +71,7 @@ export default function WeekPage() {
       ]).then(([t, s, c, p, e, k]) => {
         if (!active) return;
         const message = t.error?.message || s.error?.message || c.error?.message || p.error?.message || e.error?.message;
-        if (message) setError(message);
+        if (message) showNotice({ tone: "error", text: "לא הצלחנו לטעון את היום. נסה שוב." });
         setTasks(arrangeTasks((t.data ?? []) as Task[]));
         setLists((s.data ?? []) as List[]);
         setClasses((c.data ?? []) as ClassRow[]);
@@ -105,9 +106,7 @@ export default function WeekPage() {
     return item.unit ?? "";
   }
 
-  async function toggleBought(item: Item) {
-    if (!gate) return;
-    const bought = !item.bought;
+  function applyBought(item: Item, bought: boolean) {
     setLists((current) =>
       (current ?? []).map((list) => ({
         ...list,
@@ -116,9 +115,24 @@ export default function WeekPage() {
         ),
       })),
     );
+  }
+
+  async function toggleBought(item: Item) {
+    if (!gate) return;
+    const bought = !item.bought;
+    applyBought(item, bought);
     const { error: writeError } = await gate.supabase.from("hms_shop_items").update({ bought }).eq("id", item.id);
-    if (writeError) setError(writeError.message);
-    else notifyRefresh();
+    if (writeError) {
+      applyBought(item, item.bought);
+      showNotice({ tone: "error", text: "לא הצלחנו לעדכן את הפריט, נסה שוב." });
+      return;
+    }
+    showNotice({
+      tone: "ok",
+      text: bought ? `${item.name} סומן כנקנה` : `${item.name} חזר לרשימה`,
+      undo: () => toggleBought({ ...item, bought }),
+    });
+    notifyRefresh();
   }
 
   function startEdit(item: Item, listId: string) {
@@ -138,7 +152,7 @@ export default function WeekPage() {
     const rawQuantity = editing.quantity.replace(",", ".").trim();
     const quantity = rawQuantity === "" ? null : Number(rawQuantity);
     if (!name || !editing.listId || (quantity != null && !Number.isFinite(quantity))) {
-      setError("חסרים שם או קטגוריה.");
+      showNotice({ tone: "error", text: "חסרים שם או קטגוריה." });
       return;
     }
     const { error: writeError } = await gate.supabase.from("hms_shop_items").update({
@@ -147,9 +161,10 @@ export default function WeekPage() {
       one_off: editing.oneOff,
       list_id: editing.listId,
     }).eq("id", editing.id);
-    if (writeError) setError(writeError.message);
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו לשמור את השינוי, נסה שוב." });
     else {
       setEditing(null);
+      showNotice({ tone: "ok", text: `${name} עודכן.` });
       notifyRefresh();
     }
   }
@@ -157,49 +172,57 @@ export default function WeekPage() {
   async function removeItem(item: Item) {
     if (!gate || !window.confirm(`למחוק את "${item.name}" מהרשימה?`)) return;
     const { error: writeError } = await gate.supabase.from("hms_shop_items").delete().eq("id", item.id);
-    if (writeError) setError(writeError.message);
-    else notifyRefresh();
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו למחוק את הפריט, נסה שוב." });
+    else {
+      showNotice({ tone: "ok", text: `${item.name} נמחק מהרשימה.` });
+      notifyRefresh();
+    }
   }
 
   const visibleTasks = (tasks ?? []).filter((task) => task.status !== "done");
+  const activeTasks = visibleTasks.filter((task) => task.status === "in_progress");
+  const openTasks = visibleTasks.filter((task) => task.status === "open");
+  const shownOpenTasks = openTasks.slice(0, 4);
+  const moreOpenCount = openTasks.length - shownOpenTasks.length;
   const visibleShop = shopLists
-    .map((list) => ({ ...list, items: list.items.filter((item) => !item.bought) }))
+    .map((list) => {
+      const pending = list.items.filter((item) => !item.bought);
+      return { ...list, items: pending.slice(0, 4), more: pending.length - Math.min(pending.length, 4) };
+    })
     .filter((list) => list.items.length > 0);
-  const hasClasses = (classes?.length ?? 0) > 0;
-  const hasEvents = (events?.length ?? 0) > 0;
-  const classesCard = (
-    <CollapsibleSection
-      storageKey="home-classes"
-      title={<h2>חוגים היום</h2>}
-      action={<Link href="/classes">הכל</Link>}
-      className="panel"
-    >
-      {loading ? <Skeleton rows={2} /> : null}
-      {!loading && !hasClasses ? <Empty title="אין חוגים היום" /> : null}
-      <ul className="stack">
-        {(classes ?? []).map((row) => (
-          <li key={row.id} className="spread">
-            <button className="row-line" type="button" onClick={() => setPeek({ kind: "class", row })}>
-              <span className="row-mark" aria-hidden="true"><CalendarDays /></span>
-              <span><strong>{row.starts_at.slice(0, 5)}</strong> {row.name}</span>
-            </button>
-            <PersonLink id={row.person_id} name={personName(row.person_id)} />
-          </li>
-        ))}
-      </ul>
-    </CollapsibleSection>
-  );
+  const today = todayIso();
+  const todayEvents = (events ?? []).filter((event) => event.event_date === today);
+  const laterEvents = (events ?? []).filter((event) => event.event_date > today);
+  const visibleLaterEvents = laterEvents.slice(0, 3);
+  const moreLaterCount = laterEvents.length - visibleLaterEvents.length;
+  const scheduleCount = (classes?.length ?? 0) + todayEvents.length;
+  const nowItems = [
+    ...(classes ?? []).map((row) => ({ kind: "class" as const, row, sort: row.starts_at })),
+    ...todayEvents.map((row) => ({ kind: "event" as const, row, sort: row.event_time ?? "99:99" })),
+  ].sort((a, b) => a.sort.localeCompare(b.sort));
+  const overviewTitle = loading
+    ? "מארגנים את היום…"
+    : scheduleCount === 0
+      ? "היום נראה רגוע"
+      : scheduleCount === 1
+        ? "יש היום דבר אחד ביומן"
+        : `יש היום ${scheduleCount} דברים ביומן`;
+  const overviewLede = loading
+    ? "עוד רגע הכול יהיה במקום"
+    : openCount === 0 && pendingCount === 0
+      ? "אין משימות או קניות פתוחות, הכול בשליטה"
+      : `${openCount === 1 ? "משימה אחת" : `${openCount} משימות`} ו־${pendingCount === 1 ? "פריט אחד" : `${pendingCount} פריטים`} לקנייה מחכים לך`;
   const eventsCard = (
     <CollapsibleSection
       storageKey="home-events"
-      title={<h2>אירועים</h2>}
-      action={<Link href="/events">הכל</Link>}
-      className="panel"
+      title={<h2>בהמשך</h2>}
+      action={<Link href="/events" aria-label="לכל האירועים">הכל</Link>}
+      className="panel home-later"
     >
       {loading ? <Skeleton rows={2} /> : null}
-      {!loading && !hasEvents ? <Empty title="אין אירועים קרובים" /> : null}
+      {!loading && laterEvents.length === 0 ? <Empty title="אין אירועים בהמשך" /> : null}
       <ul className="stack">
-        {(events ?? []).map((event) => (
+        {visibleLaterEvents.map((event) => (
           <li key={event.id}>
             <button className="row-line row-line-fill spread" type="button" onClick={() => setPeek({ kind: "event", row: event })}>
               <span className="row-mark" aria-hidden="true"><Calendar /></span>
@@ -209,6 +232,9 @@ export default function WeekPage() {
           </li>
         ))}
       </ul>
+      {moreLaterCount > 0 ? (
+        <Link className="home-later-more" href="/events">עוד {moreLaterCount} אירועים</Link>
+      ) : null}
     </CollapsibleSection>
   );
 
@@ -218,74 +244,131 @@ export default function WeekPage() {
         title="היום"
         lede={`${WEEKDAYS[new Date().getDay()]}, ${new Intl.DateTimeFormat("he-IL", { day: "numeric", month: "long" }).format(new Date())}`}
       />
-      <Alert>{error}</Alert>
-      <MasonryGrid>
-        {hasClasses ? classesCard : null}
-        {hasEvents ? eventsCard : null}
-        <CollapsibleSection
-          storageKey="home-tasks"
-          title={<h2>משימות פתוחות</h2>}
-          action={<Link href="/tasks">{openCount}</Link>}
-          className="panel panel-tasks"
-        >
-          {loading ? <Skeleton rows={4} /> : null}
-          {!loading && visibleTasks.length === 0 ? (
-            <Empty title="אין משימות פתוחות" action={<Link className="btn btn-primary" href="/tasks">הוספת משימה</Link>} />
-          ) : null}
-          <ul className="stack">
-            {visibleTasks.map((task) => (
-              <TaskLine key={task.id} task={task} />
-            ))}
-          </ul>
-        </CollapsibleSection>
-
-        <CollapsibleSection
-          storageKey="home-shop"
-          title={<h2>לקנות</h2>}
-          action={<Link href="/shop">{pendingCount}</Link>}
-          className="panel panel-shop"
-        >
-          {loading ? <Skeleton rows={3} /> : null}
-          {!loading && visibleShop.length === 0 ? (
-            <Empty title="הרשימה ריקה" action={<Link className="btn btn-quiet" href="/shop">לקניות</Link>} />
-          ) : null}
-          {visibleShop.map((list) => (
-            <CollapsibleSection
-              key={list.id}
-              nested
-              storageKey={`home-shop-${list.id}`}
-              title={<span className="meta">{list.name}</span>}
-              action={<span className="meta">{list.items.length}</span>}
-            >
-              <ul className="stack">
-                {list.items.map((item) => (
-                  <SwipeRow
-                    key={item.id}
-                    startActions={[{
-                      label: "נקנה",
-                      icon: <Check aria-hidden="true" />,
-                      onSelect: () => toggleBought(item),
-                    }]}
-                    endActions={[
-                      { label: "עריכה", icon: <Pencil aria-hidden="true" />, onSelect: () => startEdit(item, list.id) },
-                      { label: "מחיקה", icon: <Trash2 aria-hidden="true" />, onSelect: () => removeItem(item), tone: "danger" },
-                    ]}
+      <section className="home-overview" aria-labelledby="home-overview-title">
+        <h2 id="home-overview-title">{overviewTitle}</h2>
+        <p>{overviewLede}</p>
+      </section>
+      <div className="home-board">
+        {loading || nowItems.length > 0 ? (
+          <section className="home-now" aria-labelledby="home-now-title">
+            <h2 id="home-now-title">עכשיו</h2>
+            {loading ? <Skeleton rows={2} /> : null}
+            <ul className="stack">
+              {nowItems.map((item) => (
+                <li key={`${item.kind}-${item.row.id}`} className="spread">
+                  <button
+                    className="row-line"
+                    type="button"
+                    onClick={() => setPeek(item.kind === "class" ? { kind: "class", row: item.row } : { kind: "event", row: item.row })}
                   >
-                    <span className="row-mark" aria-hidden="true"><ShoppingBag /></span>
-                    <div className="row-open shop-pair">
-                      <span className="shop-amount">{formatAmount(item) || "–"}</span>
-                      <ItemLabel value={item.name} />
-                    </div>
-                  </SwipeRow>
-                ))}
-              </ul>
-            </CollapsibleSection>
-          ))}
-        </CollapsibleSection>
+                    <span className="row-mark" aria-hidden="true">
+                      {item.kind === "class" ? <CalendarDays /> : <Calendar />}
+                    </span>
+                    <span>
+                      <strong>{item.sort === "99:99" ? "היום" : item.sort.slice(0, 5)}</strong>
+                      {" "}
+                      {item.kind === "class" ? item.row.name : item.row.title}
+                    </span>
+                  </button>
+                  {item.kind === "class" ? <PersonLink id={item.row.person_id} name={personName(item.row.person_id)} people={people} /> : null}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+        {loading || laterEvents.length > 0 ? (
+          <div className="home-board-row home-board-row-single">
+            {eventsCard}
+          </div>
+        ) : null}
+        <div className="home-board-row">
+          <CollapsibleSection
+            storageKey="home-tasks"
+            title={<h2>משימות</h2>}
+            action={<Link href="/tasks">{openCount}</Link>}
+            className="panel panel-tasks"
+          >
+            {loading ? <Skeleton rows={4} /> : null}
+            {!loading && visibleTasks.length === 0 ? (
+              <Empty title="אין משימות פתוחות" action={<Link className="btn btn-primary" href="/tasks">הוספת משימה</Link>} />
+            ) : null}
+            {activeTasks.length > 0 ? (
+              <CollapsibleSection nested storageKey="home-tasks-active" title={<span className="meta">בטיפול</span>} action={<span className="meta">{activeTasks.length}</span>}>
+                <ul className="stack">
+                  {activeTasks.map((task) => (
+                    <TaskLine key={task.id} task={task} />
+                  ))}
+                </ul>
+              </CollapsibleSection>
+            ) : null}
+            {shownOpenTasks.length > 0 ? (
+              <CollapsibleSection nested storageKey="home-tasks-open" title={<span className="meta">פתוחות</span>} action={<span className="meta">{openTasks.length}</span>}>
+                <ul className="stack">
+                  {shownOpenTasks.map((task) => (
+                    <TaskLine key={task.id} task={task} />
+                  ))}
+                </ul>
+                {moreOpenCount > 0 ? <Link className="home-later-more" href="/tasks">עוד {moreOpenCount} פתוחות</Link> : null}
+              </CollapsibleSection>
+            ) : null}
+          </CollapsibleSection>
 
-        {hasClasses ? null : classesCard}
-        {hasEvents ? null : eventsCard}
-      </MasonryGrid>
+          <CollapsibleSection
+            storageKey="home-shop"
+            title={<h2>לקנות</h2>}
+            action={<Link href="/shop">{pendingCount}</Link>}
+            className="panel panel-shop"
+          >
+            {loading ? <Skeleton rows={3} /> : null}
+            {!loading && visibleShop.length === 0 ? (
+              <Empty title="הרשימה ריקה" action={<Link className="btn btn-quiet" href="/shop">לקניות</Link>} />
+            ) : null}
+            {visibleShop.map((list) => (
+              <CollapsibleSection
+                key={list.id}
+                nested
+                storageKey={`home-shop-${list.id}`}
+                title={<span className="meta">{list.name}</span>}
+                action={<span className="meta">{list.items.length + list.more}</span>}
+              >
+                <ul className="stack">
+                  {list.items.map((item) => (
+                    <SwipeRow
+                      key={item.id}
+                      startActions={[{
+                        label: "נקנה",
+                        icon: <Check aria-hidden="true" />,
+                        onSelect: () => toggleBought(item),
+                      }]}
+                      endActions={[
+                        { label: "עריכה", icon: <Pencil aria-hidden="true" />, onSelect: () => startEdit(item, list.id) },
+                        { label: "מחיקה", icon: <Trash2 aria-hidden="true" />, onSelect: () => removeItem(item), tone: "danger" },
+                      ]}
+                    >
+                      <IconButton
+                        className="icon-btn-done"
+                        label={`סימון ${item.name} כנקנה`}
+                        onClick={() => toggleBought(item)}
+                      >
+                        <Check aria-hidden="true" />
+                      </IconButton>
+                      <div className="row-open shop-pair">
+                        <span className="shop-amount">{formatAmount(item) || "–"}</span>
+                        <ItemLabel value={item.name} />
+                      </div>
+                      <RowMenu>
+                        <MenuItem icon={<Pencil aria-hidden="true" />} onSelect={() => startEdit(item, list.id)}>עריכה</MenuItem>
+                        <MenuItem danger icon={<Trash2 aria-hidden="true" />} onSelect={() => removeItem(item)}>מחיקה</MenuItem>
+                      </RowMenu>
+                    </SwipeRow>
+                  ))}
+                </ul>
+                {list.more > 0 ? <Link className="home-later-more" href="/shop">עוד {list.more} ב{list.name}</Link> : null}
+              </CollapsibleSection>
+            ))}
+          </CollapsibleSection>
+        </div>
+      </div>
       <Sheet
         open={Boolean(peek)}
         title={peek?.kind === "class" ? peek.row.name : peek?.row.title ?? ""}
@@ -312,7 +395,7 @@ export default function WeekPage() {
               {formatDate(peek.row.event_date)}
               {peek.row.event_time ? ` · ${peek.row.event_time.slice(0, 5)}` : ""}
             </p>
-            {peek.row.person_id ? <PersonLink id={peek.row.person_id} name={personName(peek.row.person_id)} /> : null}
+            {peek.row.person_id ? <PersonLink id={peek.row.person_id} name={personName(peek.row.person_id)} people={people} /> : null}
             {peek.row.place ? <PlaceNav place={peek.row.place} /> : null}
             {peek.row.notes ? <p>{peek.row.notes}</p> : null}
             {peek.row.remind_day_before ? <p className="meta">תזכורת יום לפני</p> : null}

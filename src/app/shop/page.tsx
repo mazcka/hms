@@ -1,15 +1,16 @@
 "use client";
 
-import { Check, Circle, Flag, Gift, Pencil, Plus, ShoppingBag, Trash2, X } from "lucide-react";
+import { Check, Circle, Flag, Gift, Pencil, Plus, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useActionNotice } from "@/components/action-notice";
 import { useHousehold } from "@/components/auth-provider";
 import { CollapsibleSection } from "@/components/collapsible-section";
 import { DragHandle, reorder, useDragSort } from "@/components/drag-handle";
 import { IconButton, MenuItem, RowMenu, Tip } from "@/components/menu";
 import { Sheet } from "@/components/sheet";
 import { SwipeRow } from "@/components/swipe-row";
-import { Alert, Empty, ItemLabel, PageHead, Skeleton } from "@/components/ui";
+import { Empty, ItemLabel, PageHead, Skeleton } from "@/components/ui";
 import { notifyRefresh } from "@/lib/task";
 import { formatParsedAmount, parseShoppingText } from "@/lib/shop-list";
 
@@ -29,13 +30,17 @@ function formatAmount(item: Item) {
   return item.unit ?? "";
 }
 
+function sortItems(items: Item[]) {
+  return [...items].sort((a, b) => Number(a.bought) - Number(b.bought) || a.sort_order - b.sort_order);
+}
+
 export default function ShopPage() {
   const gate = useHousehold();
+  const { showNotice } = useActionNotice();
   const [lists, setLists] = useState<List[] | null>(null);
   const [listName, setListName] = useState("");
   const [draft, setDraft] = useState("");
   const [listId, setListId] = useState("");
-  const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const [addingList, setAddingList] = useState(false);
   const [addingItems, setAddingItems] = useState(false);
@@ -59,11 +64,11 @@ export default function ShopPage() {
       .select("id, name, sort_order, hms_shop_items(id, name, quantity, unit, bought, one_off, sort_order)")
       .eq("household_id", gate.member.household_id)
       .order("name");
-    if (queryError) setError(queryError.message);
+    if (queryError) showNotice({ tone: "error", text: "לא הצלחנו לטעון את הקניות, נסה שוב." });
     const rows = ((data ?? []) as List[])
       .map((list) => ({
         ...list,
-        hms_shop_items: [...(list.hms_shop_items ?? [])].sort((a, b) => a.sort_order - b.sort_order),
+        hms_shop_items: sortItems(list.hms_shop_items ?? []),
       }))
       .sort((a, b) => a.sort_order - b.sort_order);
     setLists(rows);
@@ -86,23 +91,23 @@ export default function ShopPage() {
     event.preventDefault();
     if (!gate) return;
     if (!listName.trim()) {
-      setError("חסר שם קטגוריה.");
+      showNotice({ tone: "error", text: "חסר שם לקטגוריה." });
       return;
     }
     setPending(true);
-    setError("");
     const created = await gate.supabase
       .from("hms_shop_lists")
       .insert({ household_id: gate.member.household_id, name: listName.trim() })
       .select("id")
       .single();
     setPending(false);
-    if (created.error) setError(created.error.message);
+    if (created.error) showNotice({ tone: "error", text: "לא הצלחנו להוסיף את הקטגוריה, נסה שוב." });
     else {
       const id = (created.data as { id: string } | null)?.id;
       if (id) setListId(id);
       setListName("");
       setAddingList(false);
+      showNotice({ tone: "ok", text: `${listName.trim()} נוספה.` });
       await load();
     }
   }
@@ -112,11 +117,10 @@ export default function ShopPage() {
     if (!gate) return;
     const rows = parseShoppingText(draft);
     if (!listId || rows.length === 0) {
-      setError("בחרו קטגוריה וכתבו לפחות פריט אחד.");
+      showNotice({ tone: "error", text: "בחרו קטגוריה וכתבו לפחות פריט אחד." });
       return;
     }
     setPending(true);
-    setError("");
     const { error: writeError } = await gate.supabase.from("hms_shop_items").insert(
       rows.map((row) => ({
         household_id: gate.member.household_id,
@@ -128,10 +132,11 @@ export default function ShopPage() {
       })),
     );
     setPending(false);
-    if (writeError) setError(writeError.message);
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו להוסיף את הפריטים, נסה שוב." });
     else {
       setDraft("");
       setAddingItems(false);
+      showNotice({ tone: "ok", text: rows.length === 1 ? `${rows[0].name} נוסף` : `${rows.length} פריטים נוספו` });
       await load();
     }
   }
@@ -153,11 +158,10 @@ export default function ShopPage() {
     const rawQuantity = editing.quantity.replace(",", ".").trim();
     const quantity = rawQuantity === "" ? null : Number(rawQuantity);
     if (!name || !editing.listId || (quantity != null && !Number.isFinite(quantity))) {
-      setError("חסרים שם או קטגוריה.");
+      showNotice({ tone: "error", text: "חסרים שם או קטגוריה." });
       return;
     }
     setPending(true);
-    setError("");
     const { error: writeError } = await gate.supabase.from("hms_shop_items").update({
       name,
       quantity,
@@ -165,32 +169,63 @@ export default function ShopPage() {
       list_id: editing.listId,
     }).eq("id", editing.id);
     setPending(false);
-    if (writeError) setError(writeError.message);
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו לשמור את השינוי, נסה שוב." });
     else {
       setEditing(null);
+      showNotice({ tone: "ok", text: `${name} עודכן.` });
       notifyRefresh();
       await load();
     }
   }
 
+  function applyBought(item: Item, bought: boolean) {
+    setLists((current) => {
+      const next = (current ?? []).map((list) => ({
+        ...list,
+        hms_shop_items: sortItems(
+          (list.hms_shop_items ?? []).map((row) => (row.id === item.id ? { ...row, bought } : row)),
+        ),
+      }));
+      listsRef.current = next;
+      return next;
+    });
+  }
+
   async function toggle(item: Item) {
     if (!gate) return;
-    const { error: writeError } = await gate.supabase.from("hms_shop_items").update({ bought: !item.bought }).eq("id", item.id);
-    if (writeError) setError(writeError.message);
-    else await load();
+    const bought = !item.bought;
+    applyBought(item, bought);
+    const { error: writeError } = await gate.supabase.from("hms_shop_items").update({ bought }).eq("id", item.id);
+    if (writeError) {
+      applyBought(item, item.bought);
+      showNotice({ tone: "error", text: "לא הצלחנו לעדכן את הפריט, נסה שוב." });
+      return;
+    }
+    showNotice({
+      tone: "ok",
+      text: bought ? `${item.name} סומן כנקנה` : `${item.name} חזר לרשימה`,
+      undo: () => toggle({ ...item, bought }),
+    });
+    notifyRefresh();
   }
 
   async function removeItem(item: Item) {
     if (!gate || !window.confirm(`למחוק את "${item.name}" מהרשימה?`)) return;
     const { error: writeError } = await gate.supabase.from("hms_shop_items").delete().eq("id", item.id);
-    if (writeError) setError(writeError.message);
-    else await load();
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו למחוק את הפריט, נסה שוב." });
+    else {
+      showNotice({ tone: "ok", text: `${item.name} נמחק מהרשימה.` });
+      await load();
+    }
   }
 
-  function moveItems(listId: string, from: number, to: number) {
-    const next = (listsRef.current ?? []).map((list) => (
-      list.id === listId ? { ...list, hms_shop_items: reorder(list.hms_shop_items, from, to) } : list
-    ));
+  function movePendingItems(listId: string, from: number, to: number) {
+    const next = (listsRef.current ?? []).map((list) => {
+      if (list.id !== listId) return list;
+      const pending = list.hms_shop_items.filter((item) => !item.bought);
+      const bought = list.hms_shop_items.filter((item) => item.bought);
+      return { ...list, hms_shop_items: [...reorder(pending, from, to), ...bought] };
+    });
     listsRef.current = next;
     setLists(next);
   }
@@ -212,7 +247,7 @@ export default function ShopPage() {
     )));
     const message = results.find((result) => result.error)?.error?.message;
     if (message) {
-      setError(message);
+      showNotice({ tone: "error", text: "לא הצלחנו לשמור את הסידור, נסה שוב." });
       await load();
       return;
     }
@@ -236,13 +271,13 @@ export default function ShopPage() {
     if (!gate) return;
     const marked = (lists ?? []).find((list) => list.id === id)?.hms_shop_items.filter((item) => item.bought) ?? [];
     if (marked.length === 0) {
-      setError("אין פריטים מסומנים. סמנו מה שקניתם, ואז סיימו את הסשן.");
+      showNotice({ tone: "error", text: "אין פריטים מסומנים. סמנו מה שקניתם, ואז סיימו את הסשן." });
       return;
     }
-    setError("");
     const deleted = await gate.supabase.from("hms_shop_items").delete().eq("list_id", id).eq("bought", true);
-    if (deleted.error) setError(deleted.error.message);
+    if (deleted.error) showNotice({ tone: "error", text: "לא הצלחנו לסיים את הסשן, נסה שוב." });
     else {
+      showNotice({ tone: "ok", text: marked.length === 1 ? `${marked[0].name} הוסר אחרי הקנייה` : `${marked.length} פריטים הוסרו אחרי הקנייה` });
       notifyRefresh();
       await load();
     }
@@ -252,16 +287,25 @@ export default function ShopPage() {
     if (!gate) return;
     if (!window.confirm("למחוק את הקטגוריה ואת הפריטים שלה?")) return;
     const { error: writeError } = await gate.supabase.from("hms_shop_lists").delete().eq("id", id);
-    if (writeError) setError(writeError.message);
-    else await load();
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו למחוק את הקטגוריה, נסה שוב." });
+    else {
+      showNotice({ tone: "ok", text: "הקטגוריה נמחקה." });
+      await load();
+    }
   }
 
   const preview = parseShoppingText(draft);
+  const pendingCount = (lists ?? []).reduce((n, list) => n + list.hms_shop_items.filter((item) => !item.bought).length, 0);
+  const boughtCount = (lists ?? []).reduce((n, list) => n + list.hms_shop_items.filter((item) => item.bought).length, 0);
+  const lede = !lists
+    ? "מארגנים את הרשימות…"
+    : pendingCount === 0
+      ? "אין פריטים לקנייה"
+      : `${pendingCount === 1 ? "פריט אחד" : `${pendingCount} פריטים`} לקנייה${boughtCount ? ` · ${boughtCount === 1 ? "אחד נקנה" : `${boughtCount} נקנו`}` : ""}`;
 
   return (
     <>
-      <PageHead title="קניות" action={<button className="btn btn-primary" type="button" onClick={() => setAddingItems(true)}>פריטים</button>} />
-      <Alert>{error}</Alert>
+      <PageHead title="קניות" lede={lede} action={<button className="btn btn-primary" type="button" onClick={() => setAddingItems(true)}>פריטים</button>} />
       <Sheet open={addingItems} title="פריטים חדשים" onClose={() => setAddingItems(false)}>
         <form className="stack" onSubmit={addItem}>
           <div className="category-pick">
@@ -274,7 +318,7 @@ export default function ShopPage() {
                 ))}
               </select>
             </label>
-            <IconButton label="קטגוריה חדשה" onClick={() => { setError(""); setAddingList(true); }}>
+            <IconButton label="קטגוריה חדשה" onClick={() => setAddingList(true)}>
               <Plus size={18} aria-hidden="true" />
             </IconButton>
           </div>
@@ -344,7 +388,7 @@ export default function ShopPage() {
         <div className="modal-back" role="presentation" onClick={() => setAddingList(false)}>
           <form className="modal" role="dialog" aria-modal="true" aria-label="קטגוריה חדשה" onClick={(e) => e.stopPropagation()} onSubmit={addList}>
             <header className="modal-head">
-              <p className="eyebrow">קטגוריה חדשה</p>
+              <h2>קטגוריה חדשה</h2>
               <IconButton label="סגירה" onClick={() => setAddingList(false)}>
                 <X size={18} aria-hidden="true" />
               </IconButton>
@@ -360,12 +404,12 @@ export default function ShopPage() {
         </div>
       ) : null}
       {!lists ? <Skeleton rows={3} /> : null}
-      {lists && lists.length === 0 ? <Empty title="אין קטגוריות" hint="הוסיפו קטגוריה ואז פריטים." action={<button className="btn btn-primary" type="button" onClick={() => setAddingList(true)}>קטגוריה חדשה</button>} /> : null}
+      {lists && lists.length === 0 ? <Empty title="אין קטגוריות" hint="הוסיפו קטגוריה ואז פריטים" action={<button className="btn btn-primary" type="button" onClick={() => setAddingList(true)}>קטגוריה חדשה</button>} /> : null}
       <div ref={listsRoot}>
         {lists?.map((list, listIndex) => (
           <div key={list.id} data-drag-row="">
             <CollapsibleSection
-              className="tone tone-shop"
+              className="panel"
               storageKey={`shop-list-${list.id}`}
               title={<h2>{list.name}</h2>}
               handle={
@@ -381,24 +425,23 @@ export default function ShopPage() {
                 />
               }
               action={
-                <RowMenu label={`פעולות ${list.name}`}>
-                  <MenuItem icon={<Flag aria-hidden="true" />} onSelect={() => endSession(list.id)}>סיום סשן</MenuItem>
-                  <MenuItem danger icon={<Trash2 aria-hidden="true" />} onSelect={() => removeList(list.id)}>מחיקת קטגוריה</MenuItem>
-                </RowMenu>
+                <>
+                  <span className="meta">{list.hms_shop_items.filter((item) => !item.bought).length}</span>
+                  <RowMenu label={`פעולות ${list.name}`}>
+                    <MenuItem icon={<Flag aria-hidden="true" />} onSelect={() => endSession(list.id)}>סיום סשן</MenuItem>
+                    <MenuItem danger icon={<Trash2 aria-hidden="true" />} onSelect={() => removeList(list.id)}>מחיקת קטגוריה</MenuItem>
+                  </RowMenu>
+                </>
               }
             >
-              {(list.hms_shop_items ?? []).length === 0 ? <Empty title="אין פריטים בקטגוריה" /> : null}
-              <ul
-                className="stack"
-                ref={(node) => {
-                  if (node) itemRoots.current.set(list.id, node);
-                  else itemRoots.current.delete(list.id);
-                }}
-              >
-                {(list.hms_shop_items ?? []).map((item, itemIndex) => (
+              {(() => {
+                const items = list.hms_shop_items ?? [];
+                const pending = items.filter((item) => !item.bought);
+                const bought = items.filter((item) => item.bought);
+                const line = (item: Item, itemIndex: number, sortable: boolean) => (
                   <SwipeRow
                     key={item.id}
-                    sortable
+                    sortable={sortable}
                     tone={item.bought ? "settled" : "quiet"}
                     startActions={[{
                       label: item.bought ? "להחזיר" : "נקנה",
@@ -415,7 +458,14 @@ export default function ShopPage() {
                       },
                     ]}
                   >
-                    <span className="row-mark" aria-hidden="true"><ShoppingBag /></span>
+                    <IconButton
+                      className="icon-btn-done"
+                      label={item.bought ? `החזרת ${item.name} לרשימה` : `סימון ${item.name} כנקנה`}
+                      aria-pressed={item.bought}
+                      onClick={() => toggle(item)}
+                    >
+                      <Check aria-hidden="true" />
+                    </IconButton>
                     <button className="row-open shop-pair" type="button" onClick={() => startEdit(item, list.id)}>
                       <span className="shop-amount">{formatAmount(item) || "–"}</span>
                       <span className={item.bought ? "bought" : undefined}>
@@ -423,26 +473,57 @@ export default function ShopPage() {
                         {item.one_off ? <span className="meta"> חד-פעמי</span> : null}
                       </span>
                     </button>
-                    <DragHandle
-                      label={`סידור ${item.name}`}
-                      onPointerDown={(event) => drag.start(
-                        itemIndex,
-                        event,
-                        () => itemRoots.current.get(list.id) ?? null,
-                        (from, to) => moveItems(list.id, from, to),
-                        () => {
-                          const items = listsRef.current?.find((row) => row.id === list.id)?.hms_shop_items ?? [];
-                          return saveOrder("hms_shop_items", items);
-                        },
-                      )}
-                    />
+                    {sortable ? (
+                      <DragHandle
+                        label={`סידור ${item.name}`}
+                        onPointerDown={(event) => drag.start(
+                          itemIndex,
+                          event,
+                          () => itemRoots.current.get(list.id) ?? null,
+                          (from, to) => movePendingItems(list.id, from, to),
+                          () => {
+                            const current = listsRef.current?.find((row) => row.id === list.id)?.hms_shop_items ?? [];
+                            return saveOrder("hms_shop_items", current);
+                          },
+                        )}
+                      />
+                    ) : null}
                     <RowMenu label={`פעולות עבור ${item.name}`}>
                       <MenuItem icon={<Pencil aria-hidden="true" />} onSelect={() => startEdit(item, list.id)}>עריכה</MenuItem>
                       <MenuItem danger icon={<Trash2 aria-hidden="true" />} onSelect={() => removeItem(item)}>מחיקה</MenuItem>
                     </RowMenu>
                   </SwipeRow>
-                ))}
-              </ul>
+                );
+                return (
+                  <>
+                    {items.length === 0 ? <Empty title="אין פריטים בקטגוריה" /> : null}
+                    {pending.length > 0 ? (
+                      <ul
+                        className="stack"
+                        ref={(node) => {
+                          if (node) itemRoots.current.set(list.id, node);
+                          else itemRoots.current.delete(list.id);
+                        }}
+                      >
+                        {pending.map((item, itemIndex) => line(item, itemIndex, true))}
+                      </ul>
+                    ) : null}
+                    {bought.length > 0 ? (
+                      <CollapsibleSection
+                        nested
+                        storageKey={`shop-bought-${list.id}`}
+                        title={<span className="meta">נקנו</span>}
+                        action={<span className="meta">{bought.length}</span>}
+                        defaultOpen={false}
+                      >
+                        <ul className="stack">
+                          {bought.map((item, itemIndex) => line(item, itemIndex, false))}
+                        </ul>
+                      </CollapsibleSection>
+                    ) : null}
+                  </>
+                );
+              })()}
             </CollapsibleSection>
           </div>
         ))}

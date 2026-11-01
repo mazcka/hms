@@ -9,6 +9,7 @@ import {
   type FormEvent,
   type ReactNode,
 } from "react";
+import { useActionNotice } from "@/components/action-notice";
 import { useHousehold } from "@/components/auth-provider";
 import { IconButton } from "@/components/menu";
 import { TASK_STATUS, WEEKDAYS } from "@/lib/labels";
@@ -40,15 +41,14 @@ const blank = {
 
 export function TaskEditorProvider({ children }: { children: ReactNode }) {
   const gate = useHousehold();
+  const { showNotice } = useActionNotice();
   const [task, setTask] = useState<Task | null>(null);
   const [form, setForm] = useState(blank);
-  const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   function open(next: Task) {
     setTask(next);
-    setError("");
     setConfirmDelete(false);
     setForm({
       title: next.title,
@@ -69,9 +69,20 @@ export function TaskEditorProvider({ children }: { children: ReactNode }) {
       .update({ status: next, updated_at: new Date().toISOString() })
       .eq("id", current.id);
     if (writeError) {
-      setError(writeError.message);
+      showNotice({ tone: "error", text: "לא הצלחנו לעדכן את המשימה, נסה שוב." });
       return;
     }
+    const text =
+      next === "done"
+        ? `${current.title} סומנה כבוצעה`
+        : next === "in_progress"
+          ? `${current.title} עברה לטיפול`
+          : `${current.title} חזרה לפתוחה`;
+    showNotice({
+      tone: "ok",
+      text,
+      undo: () => setStatus({ ...current, status: next }, current.status),
+    });
     notifyTasksChanged();
   }
 
@@ -79,9 +90,10 @@ export function TaskEditorProvider({ children }: { children: ReactNode }) {
     if (!gate || !window.confirm(`למחוק את המשימה "${current.title}"?`)) return;
     const { error: writeError } = await gate.supabase.from("hms_tasks").delete().eq("id", current.id);
     if (writeError) {
-      setError(writeError.message);
+      showNotice({ tone: "error", text: "לא הצלחנו למחוק את המשימה, נסה שוב." });
       return;
     }
+    showNotice({ tone: "ok", text: `${current.title} נמחקה.` });
     notifyTasksChanged();
   }
 
@@ -89,11 +101,10 @@ export function TaskEditorProvider({ children }: { children: ReactNode }) {
     event.preventDefault();
     if (!gate || !task) return;
     if (!form.title.trim()) {
-      setError("חסרה כותרת.");
+      showNotice({ tone: "error", text: "חסרה כותרת." });
       return;
     }
     setPending(true);
-    setError("");
     const { error: writeError } = await gate.supabase
       .from("hms_tasks")
       .update({
@@ -109,10 +120,11 @@ export function TaskEditorProvider({ children }: { children: ReactNode }) {
       .eq("id", task.id);
     setPending(false);
     if (writeError) {
-      setError(writeError.message);
+      showNotice({ tone: "error", text: "לא הצלחנו לשמור את המשימה, נסה שוב." });
       return;
     }
     setTask(null);
+    showNotice({ tone: "ok", text: `${form.title.trim()} עודכנה.` });
     notifyTasksChanged();
   }
 
@@ -133,10 +145,11 @@ export function TaskEditorProvider({ children }: { children: ReactNode }) {
     }
     const { error: writeError } = await gate.supabase.from("hms_tasks").delete().eq("id", task.id);
     if (writeError) {
-      setError(writeError.message);
+      showNotice({ tone: "error", text: "לא הצלחנו למחוק את המשימה, נסה שוב." });
       return;
     }
     setTask(null);
+    showNotice({ tone: "ok", text: `${task.title} נמחקה.` });
     notifyTasksChanged();
   }
 
@@ -154,7 +167,7 @@ export function TaskEditorProvider({ children }: { children: ReactNode }) {
             onSubmit={save}
           >
             <header className="modal-head">
-              <p className="eyebrow">משימה</p>
+              <h2>משימה</h2>
               <IconButton label="סגירה" onClick={() => setTask(null)}>
                 <X size={18} aria-hidden="true" />
               </IconButton>
@@ -174,11 +187,6 @@ export function TaskEditorProvider({ children }: { children: ReactNode }) {
               placeholder="פירוט"
               onChange={(e) => setForm({ ...form, details: e.target.value })}
             />
-            {error ? (
-              <p className="alert" role="alert">
-                {error}
-              </p>
-            ) : null}
             <div className="segment" role="group" aria-label="סטטוס">
               {Object.entries(TASK_STATUS).map(([value, label]) => (
                 <button

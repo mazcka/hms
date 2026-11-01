@@ -2,6 +2,7 @@
 
 import { CalendarDays, CheckSquare, Gift, Mic, Plus, ShoppingBag, Sparkles, X, type LucideIcon } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
+import { useActionNotice } from "@/components/action-notice";
 import { IconButton } from "@/components/menu";
 import { useRouter } from "next/navigation";
 import { useHousehold } from "@/components/auth-provider";
@@ -26,6 +27,7 @@ const KINDS: { id: Kind; label: string; hint: string; icon: LucideIcon }[] = [
 
 export function QuickAdd() {
   const gate = useHousehold();
+  const { showNotice } = useActionNotice();
   const router = useRouter();
   const [menu, setMenu] = useState(false);
   const [kind, setKind] = useState<Kind | null>(null);
@@ -42,7 +44,6 @@ export function QuickAdd() {
   const [eventTime, setEventTime] = useState("");
   const [people, setPeople] = useState<Person[]>([]);
   const [lists, setLists] = useState<List[]>([]);
-  const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
 
   function close() {
@@ -54,7 +55,6 @@ export function QuickAdd() {
     setEventTime("");
     setPlace("");
     setNewListName("");
-    setError("");
     setPending(false);
   }
 
@@ -97,12 +97,12 @@ export function QuickAdd() {
   async function save(event: FormEvent) {
     event.preventDefault();
     if (!kind || !title.trim()) {
-      setError("חסר שם.");
+      showNotice({ tone: "error", text: "חסר שם." });
       return;
     }
     setPending(true);
-    setError("");
     const hid = current.member.household_id;
+    const writeFailed = "לא הצלחנו לשמור. נסה שוב.";
     let message = "";
     if (kind === "task") {
       const { error: writeError } = await current.supabase.from("hms_tasks").insert({
@@ -111,7 +111,7 @@ export function QuickAdd() {
         assignee_id: current.member.id,
         created_by: current.member.id,
       });
-      message = writeError?.message ?? "";
+      message = writeError ? writeFailed : "";
       if (!message) notifyTasksChanged();
     }
     if (kind === "shop") {
@@ -123,13 +123,13 @@ export function QuickAdd() {
         if (!name) message = "חסר שם קטגוריה.";
         else {
           const created = await current.supabase.from("hms_shop_lists").insert({ household_id: hid, name }).select("id").single();
-          message = created.error?.message ?? "";
+          message = created.error ? writeFailed : "";
           target = (created.data as { id: string } | null)?.id ?? "";
         }
       }
       if (!message && !target) {
         const created = await current.supabase.from("hms_shop_lists").insert({ household_id: hid, name: "קניות" }).select("id").single();
-        message = created.error?.message ?? "";
+        message = created.error ? writeFailed : "";
         target = (created.data as { id: string } | null)?.id ?? "";
       }
       if (!message && target) {
@@ -142,7 +142,7 @@ export function QuickAdd() {
             unit: item.unit,
           })),
         );
-        message = writeError?.message ?? "";
+        message = writeError ? writeFailed : "";
       }
       if (!message) notifyRefresh();
     }
@@ -160,7 +160,7 @@ export function QuickAdd() {
           ends_at: endsAt || null,
           place: place.trim() || null,
         });
-        message = writeError?.message ?? "";
+        message = writeError ? writeFailed : "";
       }
       if (!message) notifyRefresh();
     }
@@ -170,7 +170,7 @@ export function QuickAdd() {
         title: title.trim(),
         created_by: current.member.id,
       });
-      message = writeError?.message ?? "";
+      message = writeError ? writeFailed : "";
       if (!message) notifyRefresh();
     }
     if (kind === "event") {
@@ -184,15 +184,16 @@ export function QuickAdd() {
           event_time: eventTime || null,
           created_by: current.member.id,
         });
-        message = writeError?.message ?? "";
+        message = writeError ? writeFailed : "";
       }
       if (!message) notifyRefresh();
     }
     setPending(false);
     if (message) {
-      setError(message);
+      showNotice({ tone: "error", text: message });
       return;
     }
+    showNotice({ tone: "ok", text: `${title.trim()} נוסף.` });
     close();
   }
 
@@ -236,7 +237,6 @@ export function QuickAdd() {
                   setExtra("");
                   setEndsAt("");
                   setPlace("");
-                  setError("");
                 }}
               >
                 <span className="quick-choice-icon" aria-hidden="true"><Icon size={18} /></span>
@@ -261,7 +261,7 @@ export function QuickAdd() {
         <div className="modal-back" role="presentation" onClick={close}>
           <form className="modal" role="dialog" aria-modal="true" aria-label={label} onClick={(e) => e.stopPropagation()} onSubmit={save}>
             <header className="modal-head">
-              <p className="eyebrow">{label}</p>
+              <h2>{label}</h2>
               <IconButton label="סגירה" onClick={close}>
                 <X size={18} aria-hidden="true" />
               </IconButton>
@@ -278,7 +278,6 @@ export function QuickAdd() {
             ) : (
               <input className="modal-title" value={title} aria-label="שם" placeholder="שם" onChange={(e) => setTitle(e.target.value)} required autoFocus />
             )}
-            {error ? <p className="alert" role="alert">{error}</p> : null}
             {kind === "shop" ? (
               <>
                 <label>

@@ -1,10 +1,11 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { useActionNotice } from "@/components/action-notice";
 import { useHousehold } from "@/components/auth-provider";
 import { PlaceField } from "@/components/place-field";
 import { WeekdayPicker } from "@/components/weekday-picker";
-import { Alert, PageHead } from "@/components/ui";
+import { PageHead } from "@/components/ui";
 import { DRAFT_KINDS, EVENT_KINDS, RELATIONS } from "@/lib/labels";
 import {
   emptyDraft,
@@ -15,9 +16,9 @@ import {
 
 export default function VoicePage() {
   const gate = useHousehold();
+  const { showNotice } = useActionNotice();
   const [recording, setRecording] = useState(false);
   const [draft, setDraft] = useState<VoiceDraft | null>(null);
-  const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const recorder = useRef<MediaRecorder | null>(null);
   const chunks = useRef<Blob[]>([]);
@@ -26,7 +27,6 @@ export default function VoicePage() {
   const missing = draft ? missingFields(draft) : [];
 
   async function toggleRecord() {
-    setError("");
     if (recording && recorder.current) {
       recorder.current.stop();
       setRecording(false);
@@ -36,7 +36,7 @@ export default function VoicePage() {
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {
-      setError("אין גישה למיקרופון. ההקלטה מתחילה רק אחרי אישור.");
+      showNotice({ tone: "error", text: "אין גישה למיקרופון. ההקלטה מתחילה רק אחרי אישור." });
       return;
     }
     const media = new MediaRecorder(stream);
@@ -91,12 +91,12 @@ export default function VoicePage() {
   async function cancel() {
     if (!draft) return;
     setPending(true);
-    setError("");
     try {
       await writeLog("rejected");
       setDraft(null);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "שמירת הדחייה נכשלה");
+      showNotice({ tone: "ok", text: "הטיוטה בוטלה." });
+    } catch {
+      showNotice({ tone: "error", text: "לא הצלחנו לבטל. נסה שוב." });
     } finally {
       setPending(false);
     }
@@ -105,13 +105,13 @@ export default function VoicePage() {
   async function create() {
     if (!gate || !draft || missing.length) return;
     setPending(true);
-    setError("");
     try {
       const target = await persist(draft);
       await writeLog("approved", target);
       setDraft(null);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "השמירה נכשלה");
+      showNotice({ tone: "ok", text: "נוצר בבית." });
+    } catch {
+      showNotice({ tone: "error", text: "לא הצלחנו לשמור. נסה שוב." });
     } finally {
       setPending(false);
     }
@@ -219,12 +219,19 @@ export default function VoicePage() {
 
   return (
     <>
-      <PageHead title="קול" lede="ההקלטה לא נשמרת. שורה בבית נוצרת רק אחרי „צור”." />
-      <Alert>{error}</Alert>
-      <button className="btn btn-accent" type="button" onClick={() => void toggleRecord()} disabled={pending}>
-        {recording ? "עצירת הקלטה" : "הקלטה"}
-      </button>
-      {pending ? <p>מעבד…</p> : null}
+      <PageHead title="קול" lede="ההקלטה לא נשמרת. שורה בבית נוצרת רק אחרי «צור»." />
+      <section className="panel voice-capture">
+        <button
+          className="btn btn-accent voice-rec"
+          type="button"
+          aria-pressed={recording}
+          onClick={() => void toggleRecord()}
+          disabled={pending}
+        >
+          {recording ? "עצירת הקלטה" : "הקלטה"}
+        </button>
+        {pending ? <p className="note" role="status">מעבד…</p> : recording ? <p className="meta" role="status">מקליט עכשיו.</p> : <p className="meta">לחצו להקלטה, בדקו את הטיוטה, ואז צרו.</p>}
+      </section>
       {draft ? (
         <form
           className="card stack"
@@ -235,8 +242,8 @@ export default function VoicePage() {
         >
           <h2>טיוטה</h2>
           {draft.aiMessage ? <p className="note" role="status">{draft.aiMessage}</p> : null}
-          <p>תמלול: {draft.transcript || "אין תמלול"}</p>
-          {!draft.confident ? <p>יש יותר מאפשרות אחת, או שהניתוח לא בטוח. בחרו סוג.</p> : null}
+          <p className="meta">תמלול: {draft.transcript || "אין תמלול"}</p>
+          {!draft.confident ? <p className="note">יש יותר מאפשרות אחת, או שהניתוח לא בטוח. בחרו סוג.</p> : null}
           <div className="row" role="group" aria-label="סוג רשומה">
             {(draft.options.length ? draft.options : (Object.keys(DRAFT_KINDS) as DraftKind[])).map((kind) => (
               <button
@@ -314,10 +321,9 @@ export default function VoicePage() {
             <label>כותרת<input value={draft.wishTitle} onChange={(e) => setDraft({ ...draft, wishTitle: e.target.value })} /></label>
           ) : null}
           {missing.length ? (
-            <div className="alert" role="alert" tabIndex={-1}>
-              <strong>אי אפשר ליצור עדיין.</strong>
-              <ul>{missing.map((item) => <li key={item}>{item}</li>)}</ul>
-            </div>
+            <p className="note" role="alert">
+              אי אפשר ליצור עדיין: {missing.join(" · ")}.
+            </p>
           ) : null}
           <div className="row">
             <button className="btn btn-primary" type="submit" disabled={pending || missing.length > 0}>צור</button>
