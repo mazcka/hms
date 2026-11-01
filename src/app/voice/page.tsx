@@ -220,10 +220,18 @@ export default function VoicePage() {
   return (
     <>
       <PageHead title="קול" lede="ההקלטה לא נשמרת. שורה בבית נוצרת רק אחרי «צור»." />
-      <button className="btn btn-accent" type="button" onClick={() => void toggleRecord()} disabled={pending}>
-        {recording ? "עצירת הקלטה" : "הקלטה"}
-      </button>
-      {pending ? <p className="note" role="status">מעבד…</p> : null}
+      <section className="panel voice-capture">
+        <button
+          className="btn btn-accent voice-rec"
+          type="button"
+          aria-pressed={recording}
+          onClick={() => void toggleRecord()}
+          disabled={pending}
+        >
+          {recording ? "עצירת הקלטה" : "הקלטה"}
+        </button>
+        {pending ? <p className="note" role="status">מעבד…</p> : recording ? <p className="meta" role="status">מקליט עכשיו.</p> : <p className="meta">לחצו להקלטה, בדקו את הטיוטה, ואז צרו.</p>}
+      </section>
       {draft ? (
         <form
           className="card stack"
@@ -234,8 +242,8 @@ export default function VoicePage() {
         >
           <h2>טיוטה</h2>
           {draft.aiMessage ? <p className="note" role="status">{draft.aiMessage}</p> : null}
-          <p>תמלול: {draft.transcript || "אין תמלול"}</p>
-          {!draft.confident ? <p>יש יותר מאפשרות אחת, או שהניתוח לא בטוח. בחרו סוג.</p> : null}
+          <p className="meta">תמלול: {draft.transcript || "אין תמלול"}</p>
+          {!draft.confident ? <p className="note">יש יותר מאפשרות אחת, או שהניתוח לא בטוח. בחרו סוג.</p> : null}
           <div className="row" role="group" aria-label="סוג רשומה">
             {(draft.options.length ? draft.options : (Object.keys(DRAFT_KINDS) as DraftKind[])).map((kind) => (
               <button
@@ -313,10 +321,9 @@ export default function VoicePage() {
             <label>כותרת<input value={draft.wishTitle} onChange={(e) => setDraft({ ...draft, wishTitle: e.target.value })} /></label>
           ) : null}
           {missing.length ? (
-            <div className="alert" role="alert" tabIndex={-1}>
-              <strong>אי אפשר ליצור עדיין</strong>
-              <ul>{missing.map((item) => <li key={item}>{item}</li>)}</ul>
-            </div>
+            <p className="note" role="alert">
+              אי אפשר ליצור עדיין: {missing.join(" · ")}.
+            </p>
           ) : null}
           <div className="row">
             <button className="btn btn-primary" type="submit" disabled={pending || missing.length > 0}>צור</button>

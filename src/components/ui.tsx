@@ -115,26 +115,3 @@ export function Empty({ title, hint, action }: { title: string; hint?: string; a
     </div>
   );
 }
-
-export function Field({
-  label,
-  children,
-  error,
-}: {
-  label: string;
-  children: ReactNode;
-  error?: string;
-}) {
-  const id = label.replace(/\s+/g, "-");
-  return (
-    <label>
-      {label}
-      <span id={id}>{children}</span>
-      {error ? (
-        <span className="alert" role="alert">
-          {error}
-        </span>
-      ) : null}
-    </label>
-  );
-}

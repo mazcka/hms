@@ -46,7 +46,7 @@ export default function ClassesPage() {
       gate.supabase.from("hms_people").select("id, name").eq("household_id", gate.member.household_id).order("name"),
       gate.supabase.from("hms_classes").select("id, person_id, name, weekday, weekdays, starts_at, ends_at, place, active").eq("household_id", gate.member.household_id).order("starts_at"),
     ]);
-    if (p.error || c.error) showNotice({ tone: "error", text: "לא הצלחנו לטעון את החוגים, נסה שוב" });
+    if (p.error || c.error) showNotice({ tone: "error", text: "לא הצלחנו לטעון את החוגים, נסה שוב." });
     setPeople((p.data ?? []) as Person[]);
     setRows((c.data ?? []) as ClassRow[]);
   }
@@ -67,7 +67,7 @@ export default function ClassesPage() {
     event.preventDefault();
     if (!gate) return;
     if (!form.person_id || !form.name.trim() || !form.starts_at || form.weekdays.length === 0) {
-      showNotice({ tone: "error", text: "צריך אדם, שם חוג, יום ושעת התחלה" });
+      showNotice({ tone: "error", text: "צריך אדם, שם חוג, יום ושעת התחלה." });
       return;
     }
     const weekdays = [...form.weekdays].sort((a, b) => a - b);
@@ -84,7 +84,7 @@ export default function ClassesPage() {
       ? gate.supabase.from("hms_classes").update(payload).eq("id", editingId)
       : gate.supabase.from("hms_classes").insert({ ...payload, household_id: gate.member.household_id });
     const { error: writeError } = await write;
-    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו לשמור את החוג, נסה שוב" });
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו לשמור את החוג, נסה שוב." });
     else {
       showNotice({ tone: "ok", text: editingId ? `${payload.name} עודכן` : `${payload.name} נוסף` });
       setEditingId(null);
@@ -117,7 +117,7 @@ export default function ClassesPage() {
   async function toggle(row: ClassRow) {
     if (!gate) return;
     const { error: writeError } = await gate.supabase.from("hms_classes").update({ active: !row.active }).eq("id", row.id);
-    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו לעדכן את החוג, נסה שוב" });
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו לעדכן את החוג, נסה שוב." });
     else {
       showNotice({
         tone: "ok",
@@ -134,9 +134,9 @@ export default function ClassesPage() {
     const name = rows?.find((row) => row.id === id)?.name ?? "החוג";
     if (!window.confirm(`למחוק את "${name}"?`)) return;
     const { error: writeError } = await gate.supabase.from("hms_classes").delete().eq("id", id);
-    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו למחוק את החוג, נסה שוב" });
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו למחוק את החוג, נסה שוב." });
     else {
-      showNotice({ tone: "ok", text: `${name} נמחק` });
+      showNotice({ tone: "ok", text: `${name} נמחק.` });
       notifyRefresh();
       await load();
     }

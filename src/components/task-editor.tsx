@@ -69,7 +69,7 @@ export function TaskEditorProvider({ children }: { children: ReactNode }) {
       .update({ status: next, updated_at: new Date().toISOString() })
       .eq("id", current.id);
     if (writeError) {
-      showNotice({ tone: "error", text: "לא הצלחנו לעדכן את המשימה, נסה שוב" });
+      showNotice({ tone: "error", text: "לא הצלחנו לעדכן את המשימה, נסה שוב." });
       return;
     }
     const text =
@@ -90,10 +90,10 @@ export function TaskEditorProvider({ children }: { children: ReactNode }) {
     if (!gate || !window.confirm(`למחוק את המשימה "${current.title}"?`)) return;
     const { error: writeError } = await gate.supabase.from("hms_tasks").delete().eq("id", current.id);
     if (writeError) {
-      showNotice({ tone: "error", text: "לא הצלחנו למחוק את המשימה, נסה שוב" });
+      showNotice({ tone: "error", text: "לא הצלחנו למחוק את המשימה, נסה שוב." });
       return;
     }
-    showNotice({ tone: "ok", text: `${current.title} נמחקה` });
+    showNotice({ tone: "ok", text: `${current.title} נמחקה.` });
     notifyTasksChanged();
   }
 
@@ -120,11 +120,11 @@ export function TaskEditorProvider({ children }: { children: ReactNode }) {
       .eq("id", task.id);
     setPending(false);
     if (writeError) {
-      showNotice({ tone: "error", text: "לא הצלחנו לשמור את המשימה, נסה שוב" });
+      showNotice({ tone: "error", text: "לא הצלחנו לשמור את המשימה, נסה שוב." });
       return;
     }
     setTask(null);
-    showNotice({ tone: "ok", text: `${form.title.trim()} עודכנה` });
+    showNotice({ tone: "ok", text: `${form.title.trim()} עודכנה.` });
     notifyTasksChanged();
   }
 
@@ -145,11 +145,11 @@ export function TaskEditorProvider({ children }: { children: ReactNode }) {
     }
     const { error: writeError } = await gate.supabase.from("hms_tasks").delete().eq("id", task.id);
     if (writeError) {
-      showNotice({ tone: "error", text: "לא הצלחנו למחוק את המשימה, נסה שוב" });
+      showNotice({ tone: "error", text: "לא הצלחנו למחוק את המשימה, נסה שוב." });
       return;
     }
     setTask(null);
-    showNotice({ tone: "ok", text: `${task.title} נמחקה` });
+    showNotice({ tone: "ok", text: `${task.title} נמחקה.` });
     notifyTasksChanged();
   }
 

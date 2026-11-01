@@ -50,6 +50,7 @@ const NAV = [
 function navIsCurrent(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
   if (href === "/classes") return pathname === "/classes" || pathname === "/events";
+  if (href === "/settings") return pathname === "/settings" || pathname.startsWith("/people/");
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 

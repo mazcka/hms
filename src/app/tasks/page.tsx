@@ -13,11 +13,13 @@ function TaskGroup({
   title,
   count,
   tasks,
+  defaultOpen = true,
 }: {
   storageKey: string;
   title: string;
   count: number;
   tasks: Task[];
+  defaultOpen?: boolean;
 }) {
   if (tasks.length === 0) return null;
   return (
@@ -25,6 +27,7 @@ function TaskGroup({
       storageKey={storageKey}
       title={<h2>{title}</h2>}
       action={<span className="meta">{count}</span>}
+      defaultOpen={defaultOpen}
       className="panel panel-tasks"
     >
       <ul className="stack">
@@ -52,7 +55,7 @@ export default function TasksPage() {
         .select(TASK_FIELDS)
         .eq("household_id", gate!.member.household_id);
       if (!active) return;
-      if (queryError) showNotice({ tone: "error", text: "לא הצלחנו לטעון את המשימות, נסה שוב" });
+      if (queryError) showNotice({ tone: "error", text: "לא הצלחנו לטעון את המשימות, נסה שוב." });
       setRows(arrangeTasks((data ?? []) as Task[]));
     }
     load();
@@ -69,7 +72,7 @@ export default function TasksPage() {
     event.preventDefault();
     if (!gate) return;
     if (!title.trim()) {
-      showNotice({ tone: "error", text: "חסרה כותרת למשימה" });
+      showNotice({ tone: "error", text: "חסרה כותרת למשימה." });
       return;
     }
     setPending(true);
@@ -82,12 +85,12 @@ export default function TasksPage() {
     });
     setPending(false);
     if (writeError) {
-      showNotice({ tone: "error", text: "לא הצלחנו להוסיף את המשימה, נסה שוב" });
+      showNotice({ tone: "error", text: "לא הצלחנו להוסיף את המשימה, נסה שוב." });
       return;
     }
     const name = title.trim();
     setTitle("");
-    showNotice({ tone: "ok", text: `${name} נוספה` });
+    showNotice({ tone: "ok", text: `${name} נוספה.` });
     notifyTasksChanged();
   }
 
@@ -119,7 +122,7 @@ export default function TasksPage() {
         <div className="tasks-board">
           <TaskGroup storageKey="tasks-active" title="בטיפול" count={active.length} tasks={active} />
           <TaskGroup storageKey="tasks-open" title="פתוחות" count={open.length} tasks={open} />
-          <TaskGroup storageKey="tasks-done" title="בוצעו לאחרונה" count={done.length} tasks={done} />
+          <TaskGroup storageKey="tasks-done" title="בוצעו לאחרונה" count={done.length} tasks={done} defaultOpen={false} />
         </div>
       ) : null}
     </>

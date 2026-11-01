@@ -136,7 +136,7 @@ export default function WeekPage() {
     const { error: writeError } = await gate.supabase.from("hms_shop_items").update({ bought }).eq("id", item.id);
     if (writeError) {
       applyBought(item, item.bought);
-      showNotice({ tone: "error", text: "לא הצלחנו לעדכן את הפריט, נסה שוב" });
+      showNotice({ tone: "error", text: "לא הצלחנו לעדכן את הפריט, נסה שוב." });
       return;
     }
     showNotice({
@@ -173,10 +173,10 @@ export default function WeekPage() {
       one_off: editing.oneOff,
       list_id: editing.listId,
     }).eq("id", editing.id);
-    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו לשמור את השינוי, נסה שוב" });
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו לשמור את השינוי, נסה שוב." });
     else {
       setEditing(null);
-      showNotice({ tone: "ok", text: `${name} עודכן` });
+      showNotice({ tone: "ok", text: `${name} עודכן.` });
       notifyRefresh();
     }
   }
@@ -184,9 +184,9 @@ export default function WeekPage() {
   async function removeItem(item: Item) {
     if (!gate || !window.confirm(`למחוק את "${item.name}" מהרשימה?`)) return;
     const { error: writeError } = await gate.supabase.from("hms_shop_items").delete().eq("id", item.id);
-    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו למחוק את הפריט, נסה שוב" });
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו למחוק את הפריט, נסה שוב." });
     else {
-      showNotice({ tone: "ok", text: `${item.name} נמחק מהרשימה` });
+      showNotice({ tone: "ok", text: `${item.name} נמחק מהרשימה.` });
       notifyRefresh();
     }
   }
