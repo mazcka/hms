@@ -88,43 +88,59 @@ export default function PersonPage() {
         </CollapsibleSection>
       ) : null}
       {later.length > 0 || past.length > 0 ? (
-        <CollapsibleSection storageKey={`person-${id}-events`} title={<h2>אירועים</h2>} action={<span className="meta">{later.length || past.length}</span>} className="panel">
-          <ul className="stack">
-            {later.map((row) => (
-              <li key={row.id} className="record-static">
-                <div className="row-open">
-                  <span>{row.title}</span>
-                  <span className="meta">{eventKindLabel(row.kind, kinds)} · {formatDate(row.event_date)}</span>
-                </div>
-              </li>
-            ))}
-            {past.map((row) => (
-              <li key={row.id} className="record-static status-settled">
-                <div className="row-open">
-                  <span>{row.title}</span>
-                  <span className="meta">{eventKindLabel(row.kind, kinds)} · {formatDate(row.event_date)}</span>
-                </div>
-              </li>
-            ))}
-          </ul>
+        <CollapsibleSection storageKey={`person-${id}-events`} title={<h2>אירועים</h2>} action={<span className="meta">{later.length + past.length}</span>} className="panel">
+          {later.length > 0 ? (
+            <ul className="stack">
+              {later.map((row) => (
+                <li key={row.id} className="record-static">
+                  <div className="row-open">
+                    <span>{row.title}</span>
+                    <span className="meta">{eventKindLabel(row.kind, kinds)} · {formatDate(row.event_date)}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {past.length > 0 ? (
+            <CollapsibleSection nested storageKey={`person-${id}-events-past`} title={<span className="meta">עברו</span>} action={<span className="meta">{past.length}</span>} defaultOpen={false}>
+              <ul className="stack">
+                {past.map((row) => (
+                  <li key={row.id} className="record-static status-settled">
+                    <div className="row-open">
+                      <span>{row.title}</span>
+                      <span className="meta">{eventKindLabel(row.kind, kinds)} · {formatDate(row.event_date)}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </CollapsibleSection>
+          ) : null}
         </CollapsibleSection>
       ) : null}
       {openWishes.length > 0 || boughtWishes.length > 0 ? (
-        <CollapsibleSection storageKey={`person-${id}-wishes`} title={<h2>משאלות</h2>} action={<span className="meta">{openWishes.length || boughtWishes.length}</span>} className="panel">
-          <ul className="stack">
-            {openWishes.map((row) => (
-              <li key={row.id} className="spread">
-                <span>{row.title}</span>
-                <span className="chip">{WISH_STATUS[row.status]}</span>
-              </li>
-            ))}
-            {boughtWishes.map((row) => (
-              <li key={row.id} className="spread status-settled">
-                <span className="bought">{row.title}</span>
-                <span className="chip">{WISH_STATUS[row.status]}</span>
-              </li>
-            ))}
-          </ul>
+        <CollapsibleSection storageKey={`person-${id}-wishes`} title={<h2>משאלות</h2>} action={<span className="meta">{openWishes.length + boughtWishes.length}</span>} className="panel">
+          {openWishes.length > 0 ? (
+            <ul className="stack">
+              {openWishes.map((row) => (
+                <li key={row.id} className="spread">
+                  <span>{row.title}</span>
+                  <span className="chip">{WISH_STATUS[row.status]}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {boughtWishes.length > 0 ? (
+            <CollapsibleSection nested storageKey={`person-${id}-wishes-bought`} title={<span className="meta">נקנו</span>} action={<span className="meta">{boughtWishes.length}</span>} defaultOpen={false}>
+              <ul className="stack">
+                {boughtWishes.map((row) => (
+                  <li key={row.id} className="spread status-settled">
+                    <span className="bought">{row.title}</span>
+                    <span className="chip">{WISH_STATUS[row.status]}</span>
+                  </li>
+                ))}
+              </ul>
+            </CollapsibleSection>
+          ) : null}
         </CollapsibleSection>
       ) : null}
     </>

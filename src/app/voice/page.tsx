@@ -235,7 +235,7 @@ export default function VoicePage() {
           <h2>טיוטה</h2>
           {draft.aiMessage ? <p className="note" role="status">{draft.aiMessage}</p> : null}
           <p>תמלול: {draft.transcript || "אין תמלול"}</p>
-          {!draft.confident ? <p>יש יותר מאפשרות אחת, או שהניתוח לא בטוח, בחרו סוג</p> : null}
+          {!draft.confident ? <p>יש יותר מאפשרות אחת, או שהניתוח לא בטוח. בחרו סוג.</p> : null}
           <div className="row" role="group" aria-label="סוג רשומה">
             {(draft.options.length ? draft.options : (Object.keys(DRAFT_KINDS) as DraftKind[])).map((kind) => (
               <button

@@ -194,12 +194,17 @@ export default function WeekPage() {
   const visibleTasks = (tasks ?? []).filter((task) => task.status !== "done");
   const activeTasks = visibleTasks.filter((task) => task.status === "in_progress");
   const openTasks = visibleTasks.filter((task) => task.status === "open");
+  const shownOpenTasks = openTasks.slice(0, 4);
+  const moreOpenCount = openTasks.length - shownOpenTasks.length;
   const visibleShop = shopLists
-    .map((list) => ({ ...list, items: list.items.filter((item) => !item.bought) }))
+    .map((list) => {
+      const pending = list.items.filter((item) => !item.bought);
+      return { ...list, items: pending.slice(0, 4), more: pending.length - Math.min(pending.length, 4) };
+    })
     .filter((list) => list.items.length > 0);
   const today = todayIso();
   const todayEvents = (events ?? []).filter((event) => event.event_date === today);
-  const laterEvents = (events ?? []).filter((event) => event.event_date !== today);
+  const laterEvents = (events ?? []).filter((event) => event.event_date > today);
   const visibleLaterEvents = laterEvents.slice(0, 3);
   const moreLaterCount = laterEvents.length - visibleLaterEvents.length;
   const scheduleCount = (classes?.length ?? 0) + todayEvents.length;
@@ -308,13 +313,14 @@ export default function WeekPage() {
                 </ul>
               </CollapsibleSection>
             ) : null}
-            {openTasks.length > 0 ? (
+            {shownOpenTasks.length > 0 ? (
               <CollapsibleSection nested storageKey="home-tasks-open" title={<span className="meta">פתוחות</span>} action={<span className="meta">{openTasks.length}</span>}>
                 <ul className="stack">
-                  {openTasks.map((task) => (
+                  {shownOpenTasks.map((task) => (
                     <TaskLine key={task.id} task={task} />
                   ))}
                 </ul>
+                {moreOpenCount > 0 ? <Link className="home-later-more" href="/tasks">עוד {moreOpenCount} פתוחות</Link> : null}
               </CollapsibleSection>
             ) : null}
           </CollapsibleSection>
@@ -335,7 +341,7 @@ export default function WeekPage() {
                 nested
                 storageKey={`home-shop-${list.id}`}
                 title={<span className="meta">{list.name}</span>}
-                action={<span className="meta">{list.items.length}</span>}
+                action={<span className="meta">{list.items.length + list.more}</span>}
               >
                 <ul className="stack">
                   {list.items.map((item) => (
@@ -369,6 +375,7 @@ export default function WeekPage() {
                     </SwipeRow>
                   ))}
                 </ul>
+                {list.more > 0 ? <Link className="home-later-more" href="/shop">עוד {list.more} ב{list.name}</Link> : null}
               </CollapsibleSection>
             ))}
           </CollapsibleSection>

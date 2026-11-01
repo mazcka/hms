@@ -44,13 +44,11 @@ export function TaskEditorProvider({ children }: { children: ReactNode }) {
   const { showNotice } = useActionNotice();
   const [task, setTask] = useState<Task | null>(null);
   const [form, setForm] = useState(blank);
-  const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   function open(next: Task) {
     setTask(next);
-    setError("");
     setConfirmDelete(false);
     setForm({
       title: next.title,
@@ -103,11 +101,10 @@ export function TaskEditorProvider({ children }: { children: ReactNode }) {
     event.preventDefault();
     if (!gate || !task) return;
     if (!form.title.trim()) {
-      setError("חסרה כותרת");
+      showNotice({ tone: "error", text: "חסרה כותרת." });
       return;
     }
     setPending(true);
-    setError("");
     const { error: writeError } = await gate.supabase
       .from("hms_tasks")
       .update({
@@ -190,11 +187,6 @@ export function TaskEditorProvider({ children }: { children: ReactNode }) {
               placeholder="פירוט"
               onChange={(e) => setForm({ ...form, details: e.target.value })}
             />
-            {error ? (
-              <p className="alert" role="alert">
-                {error}
-              </p>
-            ) : null}
             <div className="segment" role="group" aria-label="סטטוס">
               {Object.entries(TASK_STATUS).map(([value, label]) => (
                 <button

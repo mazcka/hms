@@ -106,15 +106,6 @@ export function PersonLink({ id, name, people }: { id: string; name: string; peo
   );
 }
 
-export function Alert({ children }: { children: string }) {
-  if (!children) return null;
-  return (
-    <p className="alert" role="alert">
-      {children}
-    </p>
-  );
-}
-
 export function Empty({ title, hint, action }: { title: string; hint?: string; action?: ReactNode }) {
   return (
     <div className="empty">

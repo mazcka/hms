@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .eq("user_id", userId)
       .maybeSingle();
     if (memberError) {
-      setError(memberError.message);
+      setError("לא הצלחנו לטעון את החברות בבית. נסה לרענן.");
       setMember(null);
       return;
     }
@@ -83,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .from("hms_members")
       .select("id, household_id, user_id, display_name")
       .eq("household_id", row.household_id);
-    if (allError) setError(allError.message);
+    if (allError) setError("לא הצלחנו לטעון את בני הבית. נסה לרענן.");
     setMembers((all ?? []) as Member[]);
   }
 
@@ -124,6 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <GateContext.Provider value={gate}>
+      <ActionNoticeProvider>
       <div className="app-main">
         {!supabase ? <SetupMissing /> : null}
         {supabase && !ready ? <Loader /> : null}
@@ -133,11 +134,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ) : null}
         {error && member ? <p className="alert" role="alert">{error}</p> : null}
         {supabase && ready && (pathname === "/login" || gate) ? (
-          <ActionNoticeProvider>
-            <TaskEditorProvider>
-              {children}
-            </TaskEditorProvider>
-          </ActionNoticeProvider>
+          <TaskEditorProvider>
+            {children}
+          </TaskEditorProvider>
         ) : null}
       </div>
       {showNav ? <QuickAdd /> : null}
@@ -158,6 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           })}
         </nav>
       ) : null}
+      </ActionNoticeProvider>
     </GateContext.Provider>
   );
 }

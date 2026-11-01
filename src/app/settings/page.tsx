@@ -168,8 +168,7 @@ export default function SettingsPage() {
                 { label: "מחיקה", icon: <Trash2 aria-hidden="true" />, onSelect: () => removePerson(person.id), tone: "danger" },
               ]}
             >
-              <button className="row-open" type="button" onClick={() => setEditing(person)}>
-                <span>{person.name}</span>
+              <button className="row-open" type="button" aria-label={`עריכת ${person.name}`} onClick={() => setEditing(person)}>
                 <span className="meta">{RELATIONS[person.relation]}</span>
               </button>
               <PersonLink id={person.id} name={person.name} people={people ?? []} />
@@ -219,7 +218,7 @@ export default function SettingsPage() {
           <input value={kindLabel} onChange={(e) => setKindLabel(e.target.value)} placeholder="סוג חדש" aria-label="סוג חדש" />
           <button className="icon-btn" type="submit" aria-label="הוספה" title="הוספה"><Plus aria-hidden="true" /></button>
         </form>
-        {kinds === null ? null : <p className="note">יום הולדת, תור ואחר תמיד זמינים סוגים שמוסיפים כאן מופיעים בטופס אירוע</p>}
+        {kinds === null ? null : <p className="note">יום הולדת, תור ואחר תמיד זמינים. סוגים שמוסיפים כאן מופיעים בטופס אירוע.</p>}
       </CollapsibleSection>
 
       <CollapsibleSection storageKey="settings-members" title={<h2>מי שמשתמש באפליקציה</h2>} className="panel">

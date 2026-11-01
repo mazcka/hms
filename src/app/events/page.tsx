@@ -38,6 +38,8 @@ function EventGroup({
   people,
   onEdit,
   onRemove,
+  empty,
+  defaultOpen = true,
 }: {
   storageKey: string;
   title: string;
@@ -46,15 +48,19 @@ function EventGroup({
   people: Person[];
   onEdit: (row: EventRow) => void;
   onRemove: (id: string) => void;
+  empty?: string;
+  defaultOpen?: boolean;
 }) {
-  if (events.length === 0) return null;
+  if (events.length === 0 && !empty) return null;
   return (
     <CollapsibleSection
       storageKey={storageKey}
       title={<h2>{title}</h2>}
-      action={<span className="meta">{events.length}</span>}
+      action={<span className="meta">{events.length || "פנוי"}</span>}
+      defaultOpen={defaultOpen}
       className="panel"
     >
+      {events.length === 0 ? <p className="agenda-empty">{empty}</p> : (
       <ul className="stack">
         {events.map((row) => (
           <SwipeRow
@@ -80,6 +86,7 @@ function EventGroup({
           </SwipeRow>
         ))}
       </ul>
+      )}
     </CollapsibleSection>
   );
 }
@@ -267,9 +274,9 @@ export default function EventsPage() {
       {rows && rows.length === 0 ? <Empty title="אין אירועים" action={<button className="btn btn-primary" type="button" onClick={() => setComposer(true)}>אירוע חדש</button>} /> : null}
       {rows && rows.length > 0 ? (
         <div className="tasks-board">
-          <EventGroup storageKey="events-today" title="היום" events={todayRows} kinds={kinds} people={people} onEdit={startEdit} onRemove={remove} />
+          <EventGroup storageKey="events-today" title="היום" events={todayRows} kinds={kinds} people={people} onEdit={startEdit} onRemove={remove} empty="אין אירועים היום." />
           <EventGroup storageKey="events-later" title="בהמשך" events={laterRows} kinds={kinds} people={people} onEdit={startEdit} onRemove={remove} />
-          <EventGroup storageKey="events-past" title="עברו" events={pastRows} kinds={kinds} people={people} onEdit={startEdit} onRemove={remove} />
+          <EventGroup storageKey="events-past" title="עברו" events={pastRows} kinds={kinds} people={people} onEdit={startEdit} onRemove={remove} defaultOpen={false} />
         </div>
       ) : null}
     </>
