@@ -2,7 +2,7 @@
 
 import { Check, Circle, Clock3, Pencil, Trash2 } from "lucide-react";
 import { useHousehold } from "@/components/auth-provider";
-import { MenuItem, RowMenu } from "@/components/menu";
+import { IconButton, MenuItem, RowMenu } from "@/components/menu";
 import { MemberMark } from "@/components/member-mark";
 import { SwipeRow } from "@/components/swipe-row";
 import { useTaskEditor } from "@/components/task-editor";
@@ -20,7 +20,7 @@ export function TaskLine({ task }: { task: Task }) {
     await editor.setStatus(task, status);
   }
 
-  const when = [task.due_date, task.weekday !== null ? WEEKDAYS[task.weekday] : ""].filter(Boolean).join(" ");
+  const when = [task.due_date, task.weekday !== null ? WEEKDAYS[task.weekday] : ""].filter(Boolean).join(" · ");
 
   return (
     <SwipeRow
@@ -43,6 +43,14 @@ export function TaskLine({ task }: { task: Task }) {
       ]}
       tone={done ? "settled" : task.status === "in_progress" ? "active" : "quiet"}
     >
+      <IconButton
+        className="icon-btn-done"
+        label={done ? `פתיחה מחדש של ${task.title}` : `סימון ${task.title} כבוצעה`}
+        aria-pressed={done}
+        onClick={() => mark(done ? "open" : "done")}
+      >
+        <Check aria-hidden="true" />
+      </IconButton>
       {assignee ? <MemberMark name={assignee.display_name} /> : null}
       <button className="row-open" type="button" onClick={() => editor.open(task)}>
         <span className={done ? "bought" : undefined}>{task.title}</span>

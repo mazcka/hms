@@ -193,6 +193,8 @@ export default function WeekPage() {
   }
 
   const visibleTasks = (tasks ?? []).filter((task) => task.status !== "done");
+  const activeTasks = visibleTasks.filter((task) => task.status === "in_progress");
+  const openTasks = visibleTasks.filter((task) => task.status === "open");
   const visibleShop = shopLists
     .map((list) => ({ ...list, items: list.items.filter((item) => !item.bought) }))
     .filter((list) => list.items.length > 0);
@@ -291,7 +293,7 @@ export default function WeekPage() {
         <div className="home-board-row">
           <CollapsibleSection
             storageKey="home-tasks"
-            title={<h2>משימות פתוחות</h2>}
+            title={<h2>משימות</h2>}
             action={<Link href="/tasks">{openCount}</Link>}
             className="panel panel-tasks"
           >
@@ -299,11 +301,24 @@ export default function WeekPage() {
             {!loading && visibleTasks.length === 0 ? (
               <Empty title="אין משימות פתוחות" action={<Link className="btn btn-primary" href="/tasks">הוספת משימה</Link>} />
             ) : null}
-            <ul className="stack">
-              {visibleTasks.map((task) => (
-                <TaskLine key={task.id} task={task} />
-              ))}
-            </ul>
+            {activeTasks.length > 0 ? (
+              <CollapsibleSection nested storageKey="home-tasks-active" title={<span className="meta">בטיפול</span>} action={<span className="meta">{activeTasks.length}</span>}>
+                <ul className="stack">
+                  {activeTasks.map((task) => (
+                    <TaskLine key={task.id} task={task} />
+                  ))}
+                </ul>
+              </CollapsibleSection>
+            ) : null}
+            {openTasks.length > 0 ? (
+              <CollapsibleSection nested storageKey="home-tasks-open" title={<span className="meta">פתוחות</span>} action={<span className="meta">{openTasks.length}</span>}>
+                <ul className="stack">
+                  {openTasks.map((task) => (
+                    <TaskLine key={task.id} task={task} />
+                  ))}
+                </ul>
+              </CollapsibleSection>
+            ) : null}
           </CollapsibleSection>
 
           <CollapsibleSection

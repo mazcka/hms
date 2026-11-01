@@ -619,11 +619,12 @@ button.row-line {
 }
 .swipe-content.status-active,
 li.status-active {
-  background: color-mix(in srgb, var(--color-accent) 22%, white);
+  background: color-mix(in srgb, var(--color-primary) 9%, var(--color-card));
 }
 .swipe-content.status-settled,
 li.status-settled {
-  background: color-mix(in srgb, var(--color-primary) 10%, white);
+  background: color-mix(in srgb, var(--color-muted) 70%, var(--color-card));
+  color: var(--color-muted-foreground);
 }
 .swipe-actions {
   display: flex;
@@ -658,7 +659,7 @@ li.status-settled {
   overflow-wrap: anywhere;
 }
 .swipe-action svg { width: 18px; height: 18px; }
-.swipe-action-warning { color: #3f2b00; background: #f2c14e; }
+.swipe-action-warning { color: var(--color-on-accent); background: var(--color-accent); }
 .swipe-action-danger { color: var(--color-on-destructive); background: var(--color-destructive); }
 .swipe-action:focus-visible { outline-offset: -3px; }
 .row-open {
@@ -797,11 +798,18 @@ li.status-settled {
   border-color: #fcd34d;
 }
 .icon-btn-danger { color: #9f2d2d; }
-.icon-btn-done { color: #1f9d6a; }
+.icon-btn-done {
+  color: var(--color-primary);
+  background: transparent;
+  border-color: transparent;
+}
+.icon-btn-done:hover {
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+}
 .icon-btn-done[aria-pressed="true"] {
-  background: #d1fae5;
-  color: #047857;
-  border-color: #6ee7b7;
+  background: transparent;
+  color: var(--color-primary);
+  border-color: transparent;
 }
 .modal-back {
   position: fixed;
@@ -1199,6 +1207,10 @@ details > summary {
   transition: inset-inline-start 180ms ease, top 180ms ease, width 180ms ease;
 }
 .masonry-item > .card { margin-bottom: 0; }
+.tasks-board {
+  display: grid;
+  gap: var(--space-md);
+}
 .panel-tasks { grid-row: span 2; }
 .panel { transition: transform 180ms ease; }
 .panel:hover { transform: translateY(-2px); }
