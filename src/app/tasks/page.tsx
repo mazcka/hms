@@ -52,7 +52,7 @@ export default function TasksPage() {
         .select(TASK_FIELDS)
         .eq("household_id", gate!.member.household_id);
       if (!active) return;
-      if (queryError) showNotice({ tone: "error", text: "לא הצלחנו לטעון את המשימות. נסה שוב." });
+      if (queryError) showNotice({ tone: "error", text: "לא הצלחנו לטעון את המשימות, נסה שוב" });
       setRows(arrangeTasks((data ?? []) as Task[]));
     }
     load();
@@ -69,7 +69,7 @@ export default function TasksPage() {
     event.preventDefault();
     if (!gate) return;
     if (!title.trim()) {
-      showNotice({ tone: "error", text: "חסרה כותרת למשימה." });
+      showNotice({ tone: "error", text: "חסרה כותרת למשימה" });
       return;
     }
     setPending(true);
@@ -82,12 +82,12 @@ export default function TasksPage() {
     });
     setPending(false);
     if (writeError) {
-      showNotice({ tone: "error", text: "לא הצלחנו להוסיף את המשימה. נסה שוב." });
+      showNotice({ tone: "error", text: "לא הצלחנו להוסיף את המשימה, נסה שוב" });
       return;
     }
     const name = title.trim();
     setTitle("");
-    showNotice({ tone: "ok", text: `${name} נוספה.` });
+    showNotice({ tone: "ok", text: `${name} נוספה` });
     notifyTasksChanged();
   }
 
@@ -97,7 +97,7 @@ export default function TasksPage() {
   const lede = !rows
     ? "מארגנים את הרשימה…"
     : active.length + open.length === 0
-      ? "אין משימות פתוחות. אפשר להוסיף אחת למעלה."
+      ? "אין משימות פתוחות, אפשר להוסיף אחת למעלה"
       : `${active.length ? `${active.length === 1 ? "אחת בטיפול" : `${active.length} בטיפול`} · ` : ""}${open.length === 1 ? "אחת פתוחה" : `${open.length} פתוחות`}`;
 
   return (
@@ -114,7 +114,7 @@ export default function TasksPage() {
         <button className="btn btn-primary" disabled={pending} type="submit">{pending ? "שומר…" : "הוספה"}</button>
       </form>
       {!rows ? <Skeleton rows={4} /> : null}
-      {rows && rows.length === 0 ? <Empty title="אין משימות" hint="כתבו כותרת למעלה. תאריך ואחראי נשמרים בעריכה." /> : null}
+      {rows && rows.length === 0 ? <Empty title="אין משימות" hint="כתבו כותרת למעלה, תאריך ואחראי נשמרים בעריכה" /> : null}
       {rows && rows.length > 0 ? (
         <div className="tasks-board">
           <TaskGroup storageKey="tasks-active" title="בטיפול" count={active.length} tasks={active} />

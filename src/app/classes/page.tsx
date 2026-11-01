@@ -46,7 +46,7 @@ export default function ClassesPage() {
       gate.supabase.from("hms_people").select("id, name").eq("household_id", gate.member.household_id).order("name"),
       gate.supabase.from("hms_classes").select("id, person_id, name, weekday, weekdays, starts_at, ends_at, place, active").eq("household_id", gate.member.household_id).order("starts_at"),
     ]);
-    if (p.error || c.error) showNotice({ tone: "error", text: "לא הצלחנו לטעון את החוגים. נסה שוב." });
+    if (p.error || c.error) showNotice({ tone: "error", text: "לא הצלחנו לטעון את החוגים, נסה שוב" });
     setPeople((p.data ?? []) as Person[]);
     setRows((c.data ?? []) as ClassRow[]);
   }
@@ -67,7 +67,7 @@ export default function ClassesPage() {
     event.preventDefault();
     if (!gate) return;
     if (!form.person_id || !form.name.trim() || !form.starts_at || form.weekdays.length === 0) {
-      showNotice({ tone: "error", text: "צריך אדם, שם חוג, יום ושעת התחלה." });
+      showNotice({ tone: "error", text: "צריך אדם, שם חוג, יום ושעת התחלה" });
       return;
     }
     const weekdays = [...form.weekdays].sort((a, b) => a - b);
@@ -84,9 +84,9 @@ export default function ClassesPage() {
       ? gate.supabase.from("hms_classes").update(payload).eq("id", editingId)
       : gate.supabase.from("hms_classes").insert({ ...payload, household_id: gate.member.household_id });
     const { error: writeError } = await write;
-    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו לשמור את החוג. נסה שוב." });
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו לשמור את החוג, נסה שוב" });
     else {
-      showNotice({ tone: "ok", text: editingId ? `${payload.name} עודכן.` : `${payload.name} נוסף.` });
+      showNotice({ tone: "ok", text: editingId ? `${payload.name} עודכן` : `${payload.name} נוסף` });
       setEditingId(null);
       setFormOpen(false);
       setForm({ ...form, name: "", starts_at: "", ends_at: "", place: "" });
@@ -117,11 +117,11 @@ export default function ClassesPage() {
   async function toggle(row: ClassRow) {
     if (!gate) return;
     const { error: writeError } = await gate.supabase.from("hms_classes").update({ active: !row.active }).eq("id", row.id);
-    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו לעדכן את החוג. נסה שוב." });
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו לעדכן את החוג, נסה שוב" });
     else {
       showNotice({
         tone: "ok",
-        text: row.active ? `${row.name} הושהה.` : `${row.name} חזר לפעיל.`,
+        text: row.active ? `${row.name} הושהה` : `${row.name} חזר לפעיל`,
         undo: () => toggle({ ...row, active: !row.active }),
       });
       notifyRefresh();
@@ -134,9 +134,9 @@ export default function ClassesPage() {
     const name = rows?.find((row) => row.id === id)?.name ?? "החוג";
     if (!window.confirm(`למחוק את "${name}"?`)) return;
     const { error: writeError } = await gate.supabase.from("hms_classes").delete().eq("id", id);
-    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו למחוק את החוג. נסה שוב." });
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו למחוק את החוג, נסה שוב" });
     else {
-      showNotice({ tone: "ok", text: `${name} נמחק.` });
+      showNotice({ tone: "ok", text: `${name} נמחק` });
       notifyRefresh();
       await load();
     }
@@ -153,10 +153,10 @@ export default function ClassesPage() {
       ? "אין חוגים עדיין"
       : todayRows.length > 0
         ? todayRows.length === 1
-          ? `היום: ${todayRows[0].name}.`
+          ? `היום: ${todayRows[0].name}`
           : `${todayRows.length} חוגים היום`
         : laterDay !== undefined
-          ? `הבא: ${WEEKDAYS[laterDay]}.`
+          ? `הבא: ${WEEKDAYS[laterDay]}`
           : "אין חוגים פעילים השבוע";
 
   return (
@@ -167,7 +167,7 @@ export default function ClassesPage() {
         action={<button className="btn btn-primary" type="button" onClick={() => { setEditingId(null); setFormOpen(true); }}>חוג חדש</button>}
       />
       <SectionTabs />
-      {people.length === 0 ? <p className="note">כדי לשייך חוג צריך קודם <Link href="/settings">להוסיף אדם בניהול</Link>.</p> : null}
+      {people.length === 0 ? <p className="note">כדי לשייך חוג צריך קודם <Link href="/settings">להוסיף אדם בניהול</Link></p> : null}
       <Sheet open={formOpen} title={editingId ? "עריכת חוג" : "חוג חדש"} onClose={() => { setFormOpen(false); setEditingId(null); }}>
       <form className="stack" onSubmit={addClass}>
         <label>

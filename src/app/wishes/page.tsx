@@ -61,7 +61,7 @@ export default function WishesPage() {
     event.preventDefault();
     if (!gate) return;
     if (!form.title.trim()) {
-      setError("חסרה כותרת.");
+      setError("חסרה כותרת");
       return;
     }
     const payload = {

@@ -24,7 +24,7 @@ export default function LoginPage() {
     setError("");
     setInfo("");
     if (!email.trim() || password.length < 6) {
-      setError("צריך אימייל וסיסמה של 6 תווים לפחות.");
+      setError("צריך אימייל וסיסמה של 6 תווים לפחות");
       return;
     }
     setPending(true);
@@ -36,7 +36,7 @@ export default function LoginPage() {
       });
       setPending(false);
       if (signError) setError(signError.message);
-      else setInfo("החשבון נוצר. אם נדרש אימות במייל, אשרו אותו ואז התחברו. שיוך לבית נעשה ב-SQL.");
+      else setInfo("החשבון נוצר אם נדרש אימות במייל, אשרו אותו ואז התחברו שיוך לבית נעשה ב-SQL");
       return;
     }
     const { error: signError } = await supabase.auth.signInWithPassword({
@@ -55,7 +55,7 @@ export default function LoginPage() {
         מצקה
       </p>
       <h1>{mode === "in" ? "כניסה" : "חשבון חדש"}</h1>
-      <p className="lede">כניסה רק לשני בני הזוג, עם אימייל וסיסמה.</p>
+      <p className="lede">כניסה רק לשני בני הזוג, עם אימייל וסיסמה</p>
       <form className="stack" onSubmit={onSubmit}>
         <Alert>{error}</Alert>
         {info ? <p className="note">{info}</p> : null}
@@ -87,7 +87,7 @@ export default function LoginPage() {
             aria-describedby="password-hint"
           />
         </label>
-        <p id="password-hint" className="meta">לפחות 6 תווים.</p>
+        <p id="password-hint" className="meta">לפחות 6 תווים</p>
         <button className="btn btn-primary" type="submit" disabled={pending}>
           {pending ? "שולח…" : mode === "in" ? "כניסה" : "יצירת חשבון"}
         </button>

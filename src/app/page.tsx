@@ -137,12 +137,12 @@ export default function WeekPage() {
     const { error: writeError } = await gate.supabase.from("hms_shop_items").update({ bought }).eq("id", item.id);
     if (writeError) {
       applyBought(item, item.bought);
-      showNotice({ tone: "error", text: "לא הצלחנו לעדכן את הפריט. נסה שוב." });
+      showNotice({ tone: "error", text: "לא הצלחנו לעדכן את הפריט, נסה שוב" });
       return;
     }
     showNotice({
       tone: "ok",
-      text: bought ? `${item.name} סומן כנקנה.` : `${item.name} חזר לרשימה.`,
+      text: bought ? `${item.name} סומן כנקנה` : `${item.name} חזר לרשימה`,
       undo: () => toggleBought({ ...item, bought }),
     });
     notifyRefresh();
@@ -165,7 +165,7 @@ export default function WeekPage() {
     const rawQuantity = editing.quantity.replace(",", ".").trim();
     const quantity = rawQuantity === "" ? null : Number(rawQuantity);
     if (!name || !editing.listId || (quantity != null && !Number.isFinite(quantity))) {
-      setError("חסרים שם או קטגוריה.");
+      setError("חסרים שם או קטגוריה");
       return;
     }
     const { error: writeError } = await gate.supabase.from("hms_shop_items").update({
@@ -174,10 +174,10 @@ export default function WeekPage() {
       one_off: editing.oneOff,
       list_id: editing.listId,
     }).eq("id", editing.id);
-    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו לשמור את השינוי. נסה שוב." });
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו לשמור את השינוי, נסה שוב" });
     else {
       setEditing(null);
-      showNotice({ tone: "ok", text: `${name} עודכן.` });
+      showNotice({ tone: "ok", text: `${name} עודכן` });
       notifyRefresh();
     }
   }
@@ -185,9 +185,9 @@ export default function WeekPage() {
   async function removeItem(item: Item) {
     if (!gate || !window.confirm(`למחוק את "${item.name}" מהרשימה?`)) return;
     const { error: writeError } = await gate.supabase.from("hms_shop_items").delete().eq("id", item.id);
-    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו למחוק את הפריט. נסה שוב." });
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו למחוק את הפריט, נסה שוב" });
     else {
-      showNotice({ tone: "ok", text: `${item.name} נמחק מהרשימה.` });
+      showNotice({ tone: "ok", text: `${item.name} נמחק מהרשימה` });
       notifyRefresh();
     }
   }
@@ -216,10 +216,10 @@ export default function WeekPage() {
         ? "יש היום דבר אחד ביומן"
         : `יש היום ${scheduleCount} דברים ביומן`;
   const overviewLede = loading
-    ? "עוד רגע הכול יהיה במקום."
+    ? "עוד רגע הכול יהיה במקום"
     : openCount === 0 && pendingCount === 0
-      ? "אין משימות או קניות פתוחות. הכול בשליטה."
-      : `${openCount === 1 ? "משימה אחת" : `${openCount} משימות`} ו־${pendingCount === 1 ? "פריט אחד" : `${pendingCount} פריטים`} לקנייה מחכים לך.`;
+      ? "אין משימות או קניות פתוחות, הכול בשליטה"
+      : `${openCount === 1 ? "משימה אחת" : `${openCount} משימות`} ו־${pendingCount === 1 ? "פריט אחד" : `${pendingCount} פריטים`} לקנייה מחכים לך`;
   const eventsCard = (
     <CollapsibleSection
       storageKey="home-events"

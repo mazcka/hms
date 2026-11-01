@@ -36,7 +36,7 @@ export default function VoicePage() {
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {
-      setError("אין גישה למיקרופון. ההקלטה מתחילה רק אחרי אישור.");
+      setError("אין גישה למיקרופון, ההקלטה מתחילה רק אחרי אישור");
       return;
     }
     const media = new MediaRecorder(stream);
@@ -219,7 +219,7 @@ export default function VoicePage() {
 
   return (
     <>
-      <PageHead title="קול" lede="ההקלטה לא נשמרת. שורה בבית נוצרת רק אחרי „צור”." />
+      <PageHead title="קול" lede="ההקלטה לא נשמרת, שורה בבית נוצרת רק אחרי „צור”" />
       <Alert>{error}</Alert>
       <button className="btn btn-accent" type="button" onClick={() => void toggleRecord()} disabled={pending}>
         {recording ? "עצירת הקלטה" : "הקלטה"}
@@ -236,7 +236,7 @@ export default function VoicePage() {
           <h2>טיוטה</h2>
           {draft.aiMessage ? <p className="note" role="status">{draft.aiMessage}</p> : null}
           <p>תמלול: {draft.transcript || "אין תמלול"}</p>
-          {!draft.confident ? <p>יש יותר מאפשרות אחת, או שהניתוח לא בטוח. בחרו סוג.</p> : null}
+          {!draft.confident ? <p>יש יותר מאפשרות אחת, או שהניתוח לא בטוח, בחרו סוג</p> : null}
           <div className="row" role="group" aria-label="סוג רשומה">
             {(draft.options.length ? draft.options : (Object.keys(DRAFT_KINDS) as DraftKind[])).map((kind) => (
               <button
@@ -315,7 +315,7 @@ export default function VoicePage() {
           ) : null}
           {missing.length ? (
             <div className="alert" role="alert" tabIndex={-1}>
-              <strong>אי אפשר ליצור עדיין.</strong>
+              <strong>אי אפשר ליצור עדיין</strong>
               <ul>{missing.map((item) => <li key={item}>{item}</li>)}</ul>
             </div>
           ) : null}

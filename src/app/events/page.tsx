@@ -101,7 +101,7 @@ export default function EventsPage() {
       gate.supabase.from("hms_events").select("id, title, kind, event_date, event_time, person_id, place, notes, remind_day_before").eq("household_id", gate.member.household_id).order("event_date"),
       gate.supabase.from("hms_event_kinds").select("id, label").eq("household_id", gate.member.household_id).order("label"),
     ]);
-    if (p.error || e.error) showNotice({ tone: "error", text: "לא הצלחנו לטעון את האירועים. נסה שוב." });
+    if (p.error || e.error) showNotice({ tone: "error", text: "לא הצלחנו לטעון את האירועים, נסה שוב" });
     setPeople((p.data ?? []) as Person[]);
     setRows((e.data ?? []) as EventRow[]);
     setKinds(k.error ? [] : (k.data ?? []) as Kind[]);
@@ -123,7 +123,7 @@ export default function EventsPage() {
     event.preventDefault();
     if (!gate) return;
     if (!form.title.trim() || !form.event_date) {
-      showNotice({ tone: "error", text: "חסרים כותרת ותאריך." });
+      showNotice({ tone: "error", text: "חסרים כותרת ותאריך" });
       return;
     }
     const payload = {
@@ -143,10 +143,10 @@ export default function EventsPage() {
       : gate.supabase.from("hms_events").insert(payload);
     const { error: writeError } = await write;
     if (writeError) {
-      showNotice({ tone: "error", text: "לא הצלחנו לשמור את האירוע. נסה שוב." });
+      showNotice({ tone: "error", text: "לא הצלחנו לשמור את האירוע, נסה שוב" });
       return;
     }
-    showNotice({ tone: "ok", text: editingId ? `${payload.title} עודכן.` : `${payload.title} נוסף.` });
+    showNotice({ tone: "ok", text: editingId ? `${payload.title} עודכן` : `${payload.title} נוסף` });
     setForm(blank);
     setEditingId(null);
     setComposer(false);
@@ -174,9 +174,9 @@ export default function EventsPage() {
     const title = rows?.find((row) => row.id === id)?.title ?? "האירוע";
     if (!window.confirm(`למחוק את "${title}"?`)) return;
     const { error: writeError } = await gate.supabase.from("hms_events").delete().eq("id", id);
-    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו למחוק את האירוע. נסה שוב." });
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו למחוק את האירוע, נסה שוב" });
     else {
-      showNotice({ tone: "ok", text: `${title} נמחק.` });
+      showNotice({ tone: "ok", text: `${title} נמחק` });
       notifyRefresh();
       await load();
     }
@@ -184,13 +184,13 @@ export default function EventsPage() {
 
   async function enableReminders() {
     if (typeof Notification === "undefined") {
-      showNotice({ tone: "error", text: "הדפדפן לא תומך בהתראות." });
+      showNotice({ tone: "error", text: "הדפדפן לא תומך בהתראות" });
       return;
     }
     const result = await Notification.requestPermission();
     showNotice({
       tone: result === "granted" ? "ok" : "error",
-      text: result === "granted" ? "תזכורת ליום לפני תופיע כשהאפליקציה נפתחת." : "ההרשאה לא ניתנה.",
+      text: result === "granted" ? "תזכורת ליום לפני תופיע כשהאפליקציה נפתחת" : "ההרשאה לא ניתנה",
     });
   }
 
@@ -202,10 +202,10 @@ export default function EventsPage() {
   const lede = !rows
     ? "מארגנים את היומן…"
     : upcoming === 0
-      ? "אין אירועים בהמשך."
+      ? "אין אירועים בהמשך"
       : upcoming === 1
-        ? "אירוע אחד בהמשך."
-        : `${upcoming} אירועים בהמשך.`;
+        ? "אירוע אחד בהמשך"
+        : `${upcoming} אירועים בהמשך`;
 
   return (
     <>

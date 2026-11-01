@@ -188,7 +188,7 @@ function SignedOut() {
   return (
     <section className="card stack">
       <BrandHeading />
-      <p>כדי לראות את היום צריך להתחבר.</p>
+      <p>כדי לראות את היום צריך להתחבר</p>
       <Link className="btn btn-primary" href="/login">
         כניסה
       </Link>
@@ -202,7 +202,7 @@ function NeedsHousehold({ userId, error }: { userId: string; error: string }) {
       <BrandHeading title="החשבון עדיין לא משויך לבית" />
       <p>
         אחרי שיש שני משתמשי Auth, יוצרים משק בית ושתי שורות ב-<code>hms_members</code> ב-SQL Editor.
-        המדיניות חוסמת יצירה מהאפליקציה לפני שיש חברות.
+        המדיניות חוסמת יצירה מהאפליקציה לפני שיש חברות
       </p>
       <p>
         מזהה המשתמש: <code>{userId}</code>

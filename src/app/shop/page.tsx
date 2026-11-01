@@ -64,7 +64,7 @@ export default function ShopPage() {
       .select("id, name, sort_order, hms_shop_items(id, name, quantity, unit, bought, one_off, sort_order)")
       .eq("household_id", gate.member.household_id)
       .order("name");
-    if (queryError) showNotice({ tone: "error", text: "לא הצלחנו לטעון את הקניות. נסה שוב." });
+    if (queryError) showNotice({ tone: "error", text: "לא הצלחנו לטעון את הקניות, נסה שוב" });
     const rows = ((data ?? []) as List[])
       .map((list) => ({
         ...list,
@@ -91,7 +91,7 @@ export default function ShopPage() {
     event.preventDefault();
     if (!gate) return;
     if (!listName.trim()) {
-      showNotice({ tone: "error", text: "חסר שם לקטגוריה." });
+      showNotice({ tone: "error", text: "חסר שם לקטגוריה" });
       return;
     }
     setPending(true);
@@ -101,13 +101,13 @@ export default function ShopPage() {
       .select("id")
       .single();
     setPending(false);
-    if (created.error) showNotice({ tone: "error", text: "לא הצלחנו להוסיף את הקטגוריה. נסה שוב." });
+    if (created.error) showNotice({ tone: "error", text: "לא הצלחנו להוסיף את הקטגוריה, נסה שוב" });
     else {
       const id = (created.data as { id: string } | null)?.id;
       if (id) setListId(id);
       setListName("");
       setAddingList(false);
-      showNotice({ tone: "ok", text: `${listName.trim()} נוספה.` });
+      showNotice({ tone: "ok", text: `${listName.trim()} נוספה` });
       await load();
     }
   }
@@ -117,7 +117,7 @@ export default function ShopPage() {
     if (!gate) return;
     const rows = parseShoppingText(draft);
     if (!listId || rows.length === 0) {
-      showNotice({ tone: "error", text: "בחרו קטגוריה וכתבו לפחות פריט אחד." });
+      showNotice({ tone: "error", text: "בחרו קטגוריה וכתבו לפחות פריט אחד" });
       return;
     }
     setPending(true);
@@ -132,11 +132,11 @@ export default function ShopPage() {
       })),
     );
     setPending(false);
-    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו להוסיף את הפריטים. נסה שוב." });
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו להוסיף את הפריטים, נסה שוב" });
     else {
       setDraft("");
       setAddingItems(false);
-      showNotice({ tone: "ok", text: rows.length === 1 ? `${rows[0].name} נוסף.` : `${rows.length} פריטים נוספו.` });
+      showNotice({ tone: "ok", text: rows.length === 1 ? `${rows[0].name} נוסף` : `${rows.length} פריטים נוספו` });
       await load();
     }
   }
@@ -158,7 +158,7 @@ export default function ShopPage() {
     const rawQuantity = editing.quantity.replace(",", ".").trim();
     const quantity = rawQuantity === "" ? null : Number(rawQuantity);
     if (!name || !editing.listId || (quantity != null && !Number.isFinite(quantity))) {
-      showNotice({ tone: "error", text: "חסרים שם או קטגוריה." });
+      showNotice({ tone: "error", text: "חסרים שם או קטגוריה" });
       return;
     }
     setPending(true);
@@ -169,10 +169,10 @@ export default function ShopPage() {
       list_id: editing.listId,
     }).eq("id", editing.id);
     setPending(false);
-    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו לשמור את השינוי. נסה שוב." });
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו לשמור את השינוי, נסה שוב" });
     else {
       setEditing(null);
-      showNotice({ tone: "ok", text: `${name} עודכן.` });
+      showNotice({ tone: "ok", text: `${name} עודכן` });
       notifyRefresh();
       await load();
     }
@@ -198,12 +198,12 @@ export default function ShopPage() {
     const { error: writeError } = await gate.supabase.from("hms_shop_items").update({ bought }).eq("id", item.id);
     if (writeError) {
       applyBought(item, item.bought);
-      showNotice({ tone: "error", text: "לא הצלחנו לעדכן את הפריט. נסה שוב." });
+      showNotice({ tone: "error", text: "לא הצלחנו לעדכן את הפריט, נסה שוב" });
       return;
     }
     showNotice({
       tone: "ok",
-      text: bought ? `${item.name} סומן כנקנה.` : `${item.name} חזר לרשימה.`,
+      text: bought ? `${item.name} סומן כנקנה` : `${item.name} חזר לרשימה`,
       undo: () => toggle({ ...item, bought }),
     });
     notifyRefresh();
@@ -212,9 +212,9 @@ export default function ShopPage() {
   async function removeItem(item: Item) {
     if (!gate || !window.confirm(`למחוק את "${item.name}" מהרשימה?`)) return;
     const { error: writeError } = await gate.supabase.from("hms_shop_items").delete().eq("id", item.id);
-    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו למחוק את הפריט. נסה שוב." });
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו למחוק את הפריט, נסה שוב" });
     else {
-      showNotice({ tone: "ok", text: `${item.name} נמחק מהרשימה.` });
+      showNotice({ tone: "ok", text: `${item.name} נמחק מהרשימה` });
       await load();
     }
   }
@@ -244,7 +244,7 @@ export default function ShopPage() {
     )));
     const message = results.find((result) => result.error)?.error?.message;
     if (message) {
-      showNotice({ tone: "error", text: "לא הצלחנו לשמור את הסידור. נסה שוב." });
+      showNotice({ tone: "error", text: "לא הצלחנו לשמור את הסידור, נסה שוב" });
       await load();
       return;
     }
@@ -268,13 +268,13 @@ export default function ShopPage() {
     if (!gate) return;
     const marked = (lists ?? []).find((list) => list.id === id)?.hms_shop_items.filter((item) => item.bought) ?? [];
     if (marked.length === 0) {
-      showNotice({ tone: "error", text: "אין פריטים מסומנים. סמנו מה שקניתם, ואז סיימו את הסשן." });
+      showNotice({ tone: "error", text: "אין פריטים מסומנים, סמנו מה שקניתם, ואז סיימו את הסשן" });
       return;
     }
     const deleted = await gate.supabase.from("hms_shop_items").delete().eq("list_id", id).eq("bought", true);
-    if (deleted.error) showNotice({ tone: "error", text: "לא הצלחנו לסיים את הסשן. נסה שוב." });
+    if (deleted.error) showNotice({ tone: "error", text: "לא הצלחנו לסיים את הסשן, נסה שוב" });
     else {
-      showNotice({ tone: "ok", text: marked.length === 1 ? `${marked[0].name} הוסר אחרי הקנייה.` : `${marked.length} פריטים הוסרו אחרי הקנייה.` });
+      showNotice({ tone: "ok", text: marked.length === 1 ? `${marked[0].name} הוסר אחרי הקנייה` : `${marked.length} פריטים הוסרו אחרי הקנייה` });
       notifyRefresh();
       await load();
     }
@@ -284,9 +284,9 @@ export default function ShopPage() {
     if (!gate) return;
     if (!window.confirm("למחוק את הקטגוריה ואת הפריטים שלה?")) return;
     const { error: writeError } = await gate.supabase.from("hms_shop_lists").delete().eq("id", id);
-    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו למחוק את הקטגוריה. נסה שוב." });
+    if (writeError) showNotice({ tone: "error", text: "לא הצלחנו למחוק את הקטגוריה, נסה שוב" });
     else {
-      showNotice({ tone: "ok", text: "הקטגוריה נמחקה." });
+      showNotice({ tone: "ok", text: "הקטגוריה נמחקה" });
       await load();
     }
   }
@@ -297,7 +297,7 @@ export default function ShopPage() {
   const lede = !lists
     ? "מארגנים את הרשימות…"
     : pendingCount === 0
-      ? "אין פריטים לקנייה."
+      ? "אין פריטים לקנייה"
       : `${pendingCount === 1 ? "פריט אחד" : `${pendingCount} פריטים`} לקנייה${boughtCount ? ` · ${boughtCount === 1 ? "אחד נקנה" : `${boughtCount} נקנו`}` : ""}`;
 
   return (
@@ -401,7 +401,7 @@ export default function ShopPage() {
         </div>
       ) : null}
       {!lists ? <Skeleton rows={3} /> : null}
-      {lists && lists.length === 0 ? <Empty title="אין קטגוריות" hint="הוסיפו קטגוריה ואז פריטים." action={<button className="btn btn-primary" type="button" onClick={() => setAddingList(true)}>קטגוריה חדשה</button>} /> : null}
+      {lists && lists.length === 0 ? <Empty title="אין קטגוריות" hint="הוסיפו קטגוריה ואז פריטים" action={<button className="btn btn-primary" type="button" onClick={() => setAddingList(true)}>קטגוריה חדשה</button>} /> : null}
       <div ref={listsRoot}>
         {lists?.map((list, listIndex) => (
           <div key={list.id} data-drag-row="">

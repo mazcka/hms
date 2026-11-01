@@ -97,7 +97,7 @@ export function QuickAdd() {
   async function save(event: FormEvent) {
     event.preventDefault();
     if (!kind || !title.trim()) {
-      setError("חסר שם.");
+      setError("חסר שם");
       return;
     }
     setPending(true);
@@ -116,11 +116,11 @@ export function QuickAdd() {
     }
     if (kind === "shop") {
       const names = parseShoppingText(title);
-      if (names.length === 0) message = "חסרים פריטים.";
+      if (names.length === 0) message = "חסרים פריטים";
       let target = listId === "__new__" ? "" : listId;
       if (!message && listId === "__new__") {
         const name = newListName.trim();
-        if (!name) message = "חסר שם קטגוריה.";
+        if (!name) message = "חסר שם קטגוריה";
         else {
           const created = await current.supabase.from("hms_shop_lists").insert({ household_id: hid, name }).select("id").single();
           message = created.error?.message ?? "";
@@ -147,7 +147,7 @@ export function QuickAdd() {
       if (!message) notifyRefresh();
     }
     if (kind === "class") {
-      if (!personId || !extra || weekdays.length === 0) message = "צריך אדם, יום ושעת התחלה.";
+      if (!personId || !extra || weekdays.length === 0) message = "צריך אדם, יום ושעת התחלה";
       else {
         const days = [...weekdays].sort((a, b) => a - b);
         const { error: writeError } = await current.supabase.from("hms_classes").insert({
@@ -174,7 +174,7 @@ export function QuickAdd() {
       if (!message) notifyRefresh();
     }
     if (kind === "event") {
-      if (!extra) message = "חסר תאריך.";
+      if (!extra) message = "חסר תאריך";
       else {
         const { error: writeError } = await current.supabase.from("hms_events").insert({
           household_id: hid,
