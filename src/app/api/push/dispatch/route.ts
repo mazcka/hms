@@ -15,17 +15,11 @@ function jerusalemNow(date = new Date()) {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
     weekday: "short",
   }).formatToParts(date);
   const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
-  const hour = Number(get("hour"));
-  const minute = Number(get("minute"));
   return {
     date: `${get("year")}-${get("month")}-${get("day")}`,
-    minutes: hour * 60 + minute,
     weekday: WEEKDAYS.indexOf(get("weekday")),
   };
 }
@@ -35,18 +29,6 @@ function addDays(iso: string, days: number) {
   const date = new Date(Date.UTC(year, month - 1, day));
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10);
-}
-
-function clockMinutes(value: string | null) {
-  if (!value) return null;
-  const [hour, minute] = value.split(":");
-  const parsed = Number(hour) * 60 + Number(minute);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
-function inWindow(now: number, target: number) {
-  const delta = now - target;
-  return delta >= 0 && delta < 15;
 }
 
 function serviceClient() {
@@ -83,22 +65,20 @@ export async function GET(request: Request) {
   const tomorrow = addDays(now.date, 1);
   const notes: Note[] = [];
 
-  if (inWindow(now.minutes, 8 * 60)) {
-    const { data } = await supabase
-      .from("hms_events")
-      .select("id, household_id, title")
-      .eq("remind_day_before", true)
-      .eq("event_date", tomorrow);
-    for (const row of data ?? []) {
-      notes.push({
-        householdId: row.household_id,
-        kind: "event",
-        entityId: row.id,
-        title: "מצקה",
-        body: `מחר: ${row.title}`,
-        url: "/events",
-      });
-    }
+  const { data } = await supabase
+    .from("hms_events")
+    .select("id, household_id, title")
+    .eq("remind_day_before", true)
+    .eq("event_date", tomorrow);
+  for (const row of data ?? []) {
+    notes.push({
+      householdId: row.household_id,
+      kind: "event",
+      entityId: row.id,
+      title: "מצקה",
+      body: `מחר: ${row.title}`,
+      url: "/events",
+    });
   }
 
   const { data: classes } = await supabase
@@ -107,8 +87,6 @@ export async function GET(request: Request) {
     .eq("active", true)
     .contains("weekdays", [now.weekday]);
   for (const row of classes ?? []) {
-    const start = clockMinutes(row.starts_at);
-    if (start == null || start < 60 || !inWindow(now.minutes, start - 60)) continue;
     const time = row.starts_at.slice(0, 5);
     notes.push({
       householdId: row.household_id,
@@ -126,15 +104,12 @@ export async function GET(request: Request) {
     .eq("due_date", now.date)
     .neq("status", "done");
   for (const row of tasks ?? []) {
-    const due = clockMinutes(row.due_time);
-    const target = due == null ? 8 * 60 : due;
-    if (!inWindow(now.minutes, target)) continue;
     notes.push({
       householdId: row.household_id,
       kind: "task",
       entityId: row.id,
       title: "מצקה",
-      body: due == null ? `היום: ${row.title}` : `היום ב־${row.due_time.slice(0, 5)}: ${row.title}`,
+      body: row.due_time ? `היום ב־${row.due_time.slice(0, 5)}: ${row.title}` : `היום: ${row.title}`,
       url: "/tasks",
     });
   }
