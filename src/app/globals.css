@@ -989,8 +989,8 @@ li.status-settled {
   }
   .week-event {
     grid-template-columns: 3.5rem minmax(0, 1fr);
-    gap: 0.45rem;
-    padding: 0.55rem 0.6rem;
+    gap: 0.4rem;
+    padding: 0.35rem 0.55rem;
   }
   .week-event-row .chip-person {
     max-width: 4.75rem;
@@ -1101,6 +1101,25 @@ details > summary {
 }
 .action-notice.alert { margin-bottom: 0; }
 .action-notice .btn { flex: none; min-height: 2.25rem; }
+.action-notice-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  flex: none;
+}
+.action-notice-close {
+  width: 2.25rem;
+  height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.action-notice-close:hover { background: color-mix(in srgb, currentColor 10%, transparent); }
 .home-overview {
   margin-bottom: var(--space-lg);
   padding: var(--space-md) 1.15rem;
@@ -1209,15 +1228,24 @@ details > summary {
 }
 .week-event-row {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   gap: 0.4rem;
   min-width: 0;
 }
 .week-event-row .chip-person {
   flex: none;
   max-width: 6.5rem;
+  min-height: 1.65rem;
+  padding: 0.05rem 0.5rem;
+  font-size: 0.75rem;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.week-event-row .row-menu {
+  width: 2rem;
+  height: 2rem;
+  align-self: center;
 }
 .week-event {
   flex: 1;
@@ -1227,8 +1255,8 @@ details > summary {
   gap: 0.65rem;
   align-items: start;
   text-align: start;
-  min-height: 3.5rem;
-  padding: 0.7rem 0.8rem;
+  min-height: 2.85rem;
+  padding: 0.4rem 0.7rem;
   border: 0;
   border-radius: 14px;
   background: color-mix(in srgb, var(--color-primary) 9%, var(--color-card));
